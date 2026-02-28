@@ -64,7 +64,11 @@ export function GameInfo() {
               )}
             </p>
             <div className="text-lg font-semibold">
-              {currentTurn === humanPlayer ? (
+              {isAiThinking ? (
+                <span className="text-orange-500 animate-pulse">
+                  🤔 Analyzing board...
+                </span>
+              ) : currentTurn === humanPlayer ? (
                 <span className="text-blue-500">You ({humanPlayer})</span>
               ) : (
                 <span className="text-red-500">Bot</span>

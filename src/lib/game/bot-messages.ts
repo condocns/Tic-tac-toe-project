@@ -9,7 +9,8 @@ type MessageCategory =
   | "bot_wins"
   | "player_wins"
   | "draw"
-  | "thinking";
+  | "thinking"
+  | "after_player_move";
 
 const messages: Record<MessageCategory, string[]> = {
   game_start: [
@@ -65,6 +66,12 @@ const messages: Record<MessageCategory, string[]> = {
     "Calculating optimal move...",
     "Processing... 🤔",
     "One moment, genius at work...",
+  ],
+  after_player_move: [
+    "Interesting choice... let me respond.",
+    "Good move! Now it's my turn.",
+    "I see what you did there...",
+    "Challenge accepted!",
   ],
 };
 

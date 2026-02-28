@@ -100,7 +100,7 @@ export const PLAYERS = {
 
 // Animation durations (ms)
 export const ANIMATION_DURATIONS = {
-  BOT_THINKING: 300,  // Reduced from 600ms to 300ms
+  BOT_THINKING: 1200,  // Increased to 1.2s for realistic thinking time
   CELL_ANIMATION: 300,
   WIN_LINE: 400,
 } as const;

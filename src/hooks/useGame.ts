@@ -6,6 +6,8 @@ import { useGameStore } from "@/lib/game/store";
 import { gameApi } from "@/lib/api";
 import { ANIMATION_DURATIONS } from "@/constants";
 import type { Board, GameResult } from "@/lib/game/logic";
+import { getBotMessage } from "@/lib/game/bot-messages";
+import { getRuntimeConfig } from "@/lib/config";
 
 export function useGame() {
   const {
@@ -81,9 +83,14 @@ export function useGame() {
         setIsAiThinking(true);
         setCurrentTurn(aiPlayer);
 
-        // Simulate AI thinking
+        // Show thinking message
+        setBotMessage(getBotMessage("thinking"));
+
+        // Get bot thinking time from runtime config
+        const config = getRuntimeConfig();
+        const thinkingTime = config.BOT_THINKING[difficulty.toUpperCase() as keyof typeof config.BOT_THINKING];
         await new Promise((resolve) => 
-          setTimeout(resolve, ANIMATION_DURATIONS.BOT_THINKING)
+          setTimeout(resolve, thinkingTime)
         );
 
         // Apply AI move
