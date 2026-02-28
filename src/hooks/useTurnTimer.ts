@@ -13,6 +13,7 @@ export function useTurnTimer() {
     turnStartTime,
     timeRemaining,
     isTimerActive,
+    board,
     startTurnTimer,
     stopTurnTimer,
     updateTimeRemaining,
@@ -21,14 +22,22 @@ export function useTurnTimer() {
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Start timer when it's human's turn
+  // Start timer when it's human's turn AND game is ready
   useEffect(() => {
-    if (currentTurn === humanPlayer && !isAiThinking && !gameResult && !turnStartTime) {
+    // Only start timer if:
+    // 1. It's human's turn
+    // 2. AI is not thinking
+    // 3. No game result
+    // 4. Timer hasn't started yet
+    // 5. Game has actually started (board is not empty or first move has been made)
+    const gameHasStarted = board.some((cell: string | null) => cell !== null) || turnStartTime !== null;
+    
+    if (currentTurn === humanPlayer && !isAiThinking && !gameResult && !turnStartTime && gameHasStarted) {
       startTurnTimer();
     } else if (currentTurn !== humanPlayer || isAiThinking || gameResult) {
       stopTurnTimer();
     }
-  }, [currentTurn, humanPlayer, isAiThinking, gameResult, turnStartTime, startTurnTimer, stopTurnTimer]);
+  }, [currentTurn, humanPlayer, isAiThinking, gameResult, turnStartTime, startTurnTimer, stopTurnTimer, board]);
 
   // Timer countdown logic
   useEffect(() => {
