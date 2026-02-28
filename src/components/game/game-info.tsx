@@ -40,7 +40,7 @@ export function GameInfo() {
   const resultInfo = getResultInfo();
 
   return (
-    <div className="space-y-3 w-full max-w-[380px] mx-auto min-h-[120px]">
+    <div className="space-y-4 w-full">
       {/* Turn indicator */}
       <AnimatePresence mode="wait">
         {!gameResult && (
@@ -49,9 +49,9 @@ export function GameInfo() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="text-center"
+            className="bg-card/50 backdrop-blur-sm rounded-xl p-4 border border-border/50 text-center"
           >
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mb-2">
               {isAiThinking ? (
                 <span className="inline-flex items-center gap-1.5">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -63,6 +63,13 @@ export function GameInfo() {
                 </span>
               )}
             </p>
+            <div className="text-lg font-semibold">
+              {currentTurn === humanPlayer ? (
+                <span className="text-blue-500">You ({humanPlayer})</span>
+              ) : (
+                <span className="text-red-500">Bot</span>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -74,14 +81,18 @@ export function GameInfo() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className={cn(
-              "flex items-center justify-center gap-2 rounded-lg border p-3",
+              "flex items-center justify-center gap-3 rounded-xl border p-4 shadow-lg",
               resultInfo.bg
             )}
           >
-            {resultInfo.icon}
-            <span className={cn("font-semibold", resultInfo.color)}>
-              {resultInfo.text}
-            </span>
+            <div className="p-2 rounded-full bg-background/50">
+              {resultInfo.icon}
+            </div>
+            <div className="text-center">
+              <div className={cn("font-bold text-lg", resultInfo.color)}>
+                {resultInfo.text}
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -94,10 +105,12 @@ export function GameInfo() {
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 10 }}
-            className="flex items-start gap-2 rounded-lg bg-muted/50 p-3 min-h-[60px]"
+            className="flex items-start gap-3 rounded-xl bg-muted/50 backdrop-blur-sm p-4 border border-border/30"
           >
-            <Bot className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground italic">{botMessage}</p>
+            <div className="p-1.5 rounded-full bg-background/50 shrink-0">
+              <Bot className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground italic leading-relaxed">{botMessage}</p>
           </motion.div>
         )}
       </AnimatePresence>

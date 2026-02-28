@@ -36,7 +36,7 @@ export function GameBoard() {
     <div className="relative">
       <div 
         style={gridStyle}
-        className="max-w-[320px] sm:max-w-[380px] mx-auto aspect-square"
+        className="max-w-[350px] sm:max-w-[400px] mx-auto aspect-square"
       >
         {board.map((cell, index) => {
           const isWinningCell = winningLine?.includes(index);
@@ -48,26 +48,26 @@ export function GameBoard() {
             <motion.button
               key={index}
               className={cn(
-                "relative flex items-center justify-center rounded-xl border-2 bg-card text-card-foreground",
+                "relative flex items-center justify-center rounded-xl border-2 bg-card/80 backdrop-blur-sm text-card-foreground shadow-sm",
                 getFontSize(),
                 "font-bold",
-                "transition-all duration-200",
-                "aspect-square", // Ensure square cells
+                "transition-all duration-300",
+                "aspect-square",
                 cell === null && !isAiThinking && !gameResult
-                  ? "hover:bg-accent hover:border-primary/50 cursor-pointer"
+                  ? "hover:bg-accent/80 hover:border-primary/60 hover:shadow-lg cursor-pointer hover:scale-105"
                   : "cursor-default",
-                isWinningCell && "border-primary bg-primary/10",
-                !isWinningCell && "border-border"
+                isWinningCell && "border-primary bg-primary/20 shadow-lg",
+                !isWinningCell && "border-border/60 hover:border-border"
               )}
               onClick={() => makeMove(index)}
               whileHover={
                 cell === null && !isAiThinking && !gameResult
-                  ? { scale: 1.05 }
+                  ? { scale: 1.05, y: -2 }
                   : {}
               }
               whileTap={
                 cell === null && !isAiThinking && !gameResult
-                  ? { scale: 0.95 }
+                  ? { scale: 0.95, y: 0 }
                   : {}
               }
             >
@@ -75,13 +75,13 @@ export function GameBoard() {
                 {cell && (
                   <motion.span
                     key={`${index}-${cell}`}
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    exit={{ scale: 0, rotate: 180 }}
+                    initial={{ scale: 0, rotate: -180, opacity: 0 }}
+                    animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                    exit={{ scale: 0, rotate: 180, opacity: 0 }}
                     transition={{ type: "spring", stiffness: 260, damping: 20 }}
                     className={cn(
-                      cell === humanPlayer ? "text-blue-500" : "text-red-500",
-                      isWinningCell && "drop-shadow-lg"
+                      cell === humanPlayer ? "text-blue-500 drop-shadow-sm" : "text-red-500 drop-shadow-sm",
+                      isWinningCell && "drop-shadow-lg scale-110"
                     )}
                   >
                     {cell}
@@ -92,24 +92,24 @@ export function GameBoard() {
                     initial={{ opacity: 0, scale: 0 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0 }}
-                    transition={{ duration: 0.3 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
                     className="absolute inset-0 flex items-center justify-center pointer-events-none"
                   >
                     <div 
                       className={cn(
-                        "bg-green-500 rounded-full",
+                        "bg-gradient-to-r from-green-400 to-green-600 rounded-full shadow-lg",
                         // Horizontal lines
                         (winningLine?.[0] === 0 && winningLine?.[1] === 1 && winningLine?.[2] === 2) ||
                         (winningLine?.[0] === 3 && winningLine?.[1] === 4 && winningLine?.[2] === 5) ||
                         (winningLine?.[0] === 6 && winningLine?.[1] === 7 && winningLine?.[2] === 8)
-                          ? "w-full h-1"
+                          ? "w-full h-1.5"
                         // Vertical lines  
                         : (winningLine?.[0] === 0 && winningLine?.[1] === 3 && winningLine?.[2] === 6) ||
                           (winningLine?.[0] === 1 && winningLine?.[1] === 4 && winningLine?.[2] === 7) ||
                           (winningLine?.[0] === 2 && winningLine?.[1] === 5 && winningLine?.[2] === 8)
-                          ? "w-1 h-full"
+                          ? "w-1.5 h-full"
                         // Diagonal lines
-                        : "w-full h-1" // Default to horizontal, will be overridden by style
+                        : "w-full h-1.5"
                       )}
                       style={{
                         // Special handling for diagonal lines
@@ -119,7 +119,7 @@ export function GameBoard() {
                         ...(winningLine?.[0] === 0 && winningLine?.[1] === 4 && winningLine?.[2] === 8 && {
                           transform: 'rotate(45deg)'
                         }),
-                        // Add default transform for other diagonal patterns (for larger grids)
+                        // Add default transform for other diagonal patterns
                         ...(!winningLine || (winningLine?.[0] === 0 && winningLine?.[1] === 1 && winningLine?.[2] === 2) ||
                            (winningLine?.[0] === 3 && winningLine?.[1] === 4 && winningLine?.[2] === 5) ||
                            (winningLine?.[0] === 6 && winningLine?.[1] === 7 && winningLine?.[2] === 8) ||
