@@ -37,6 +37,28 @@ function minimax(
 
 function getHardMove(board: Board, aiPlayer: Player, humanPlayer: Player): number {
   const moves = getAvailableMoves(board);
+  const boardSize = board.length;
+  
+  // For larger grids, don't use minimax (too slow)
+  if (boardSize > 9) {
+    // Use strategic positions for larger grids
+    const centerPositions = getCenterPositions(boardSize);
+    const availableCenters = centerPositions.filter(i => board[i] === null);
+    if (availableCenters.length > 0) {
+      return availableCenters[Math.floor(Math.random() * availableCenters.length)];
+    }
+    
+    // Take strategic corners/edges for larger grids
+    const strategicPositions = getStrategicPositions(boardSize);
+    const availableStrategic = strategicPositions.filter(i => board[i] === null);
+    if (availableStrategic.length > 0) {
+      return availableStrategic[Math.floor(Math.random() * availableStrategic.length)];
+    }
+    
+    return moves[Math.floor(Math.random() * moves.length)];
+  }
+  
+  // Original minimax for 3x3 only
   let bestScore = -Infinity;
   let bestMove = moves[0];
 
@@ -53,28 +75,32 @@ function getHardMove(board: Board, aiPlayer: Player, humanPlayer: Player): numbe
   return bestMove;
 }
 
+function getStrategicPositions(boardSize: number): number[] {
+  if (boardSize === 16) { // 4x4
+    return [0, 3, 12, 15, 5, 6, 9, 10]; // Corners + center positions
+  } else if (boardSize === 25) { // 5x5
+    return [0, 4, 20, 24, 6, 8, 16, 18, 12]; // Corners + edges + center
+  }
+  return [0, 2, 6, 8]; // Default 3x3 corners
+}
+
 function getEasyMove(board: Board, aiPlayer: Player, humanPlayer: Player): number {
   const moves = getAvailableMoves(board);
-
-  // 60% chance to make smart move, 40% random
-  if (Math.random() < 0.6) {
-    // Check if AI can win in one move
-    for (const move of moves) {
-      board[move] = aiPlayer;
-      const { winner } = checkWinner(board);
-      board[move] = null;
-      if (winner === aiPlayer) return move;
+  
+  if (moves.length === 0) return -1;
+  
+  // For larger grids, use different strategies
+  const boardSize = board.length;
+  
+  if (boardSize > 9) {
+    // For 4x4 and 5x5 grids, prioritize center and strategic positions
+    const centerPositions = getCenterPositions(boardSize);
+    const availableCenters = centerPositions.filter(i => board[i] === null);
+    if (availableCenters.length > 0) {
+      return availableCenters[Math.floor(Math.random() * availableCenters.length)];
     }
-
-    // Check if human can win in one move and block
-    for (const move of moves) {
-      board[move] = humanPlayer;
-      const { winner } = checkWinner(board);
-      board[move] = null;
-      if (winner === humanPlayer) return move;
-    }
-
-    // Take center if available (strategic position)
+  } else {
+    // For 3x3 grid, try center first
     if (board[4] === null) return 4;
     
     // Take corners (strategic positions)
@@ -88,24 +114,54 @@ function getEasyMove(board: Board, aiPlayer: Player, humanPlayer: Player): numbe
   return moves[Math.floor(Math.random() * moves.length)];
 }
 
+function getCenterPositions(boardSize: number): number[] {
+  if (boardSize === 16) { // 4x4
+    return [5, 6, 9, 10]; // Center 4 positions
+  } else if (boardSize === 25) { // 5x5
+    return [12]; // Center position
+  }
+  return [Math.floor(boardSize / 2)]; // Default center
+}
+
 function getMediumMove(board: Board, aiPlayer: Player, humanPlayer: Player): number {
   const moves = getAvailableMoves(board);
+  const boardSize = board.length;
 
-  // 80% smart moves, 20% random
+  // For larger grids, use strategic positions (no minimax)
+  if (boardSize > 9) {
+    // 70% strategic moves, 30% random
+    if (Math.random() < 0.7) {
+      const centerPositions = getCenterPositions(boardSize);
+      const availableCenters = centerPositions.filter(i => board[i] === null);
+      if (availableCenters.length > 0) {
+        return availableCenters[Math.floor(Math.random() * availableCenters.length)];
+      }
+      
+      const strategicPositions = getStrategicPositions(boardSize);
+      const availableStrategic = strategicPositions.filter(i => board[i] === null);
+      if (availableStrategic.length > 0) {
+        return availableStrategic[Math.floor(Math.random() * availableStrategic.length)];
+      }
+    }
+    
+    return moves[Math.floor(Math.random() * moves.length)];
+  }
+
+  // Original minimax logic for 3x3 only
   if (Math.random() < 0.8) {
-    // Use minimax with limited depth for "good enough" moves
     let bestScore = -Infinity;
     let bestMove = moves[0];
 
     for (const move of moves) {
       board[move] = aiPlayer;
-      const score = minimax(board, 2, false, aiPlayer, humanPlayer); // Limited depth
+      const score = minimax(board, 0, false, aiPlayer, humanPlayer);
       board[move] = null;
       if (score > bestScore) {
         bestScore = score;
         bestMove = move;
       }
     }
+
     return bestMove;
   }
 
@@ -117,7 +173,8 @@ export function getAIMove(
   board: Board,
   difficulty: Difficulty,
   aiPlayer: Player,
-  humanPlayer: Player
+  humanPlayer: Player,
+  gridSize?: string
 ): number {
   switch (difficulty) {
     case "hard":

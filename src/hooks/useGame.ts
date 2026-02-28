@@ -36,6 +36,7 @@ export function useGame() {
         difficulty,
         humanPlayer,
         aiPlayer,
+        gridSize,
       }),
     retry: 1,
     retryDelay: 1000,

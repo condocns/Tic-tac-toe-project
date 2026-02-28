@@ -1,9 +1,60 @@
 "use client";
 
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/hooks/useGame";
 import { cn } from "@/lib/utils";
 import { BOARD_CONFIGS } from "@/constants";
+
+// Helper functions for winning line visualization
+function getWinningLineStyle(winningLine: number[] | null, gridSize: string): string {
+  if (!winningLine) return "w-full h-1.5";
+  
+  const gridCols = gridSize === "3x3" ? 3 : gridSize === "4x4" ? 4 : 5;
+  const firstIndex = winningLine[0];
+  const secondIndex = winningLine[1];
+  
+  // Check if horizontal (same row)
+  if (Math.floor(firstIndex / gridCols) === Math.floor(secondIndex / gridCols)) {
+    return "w-full h-1.5";
+  }
+  // Check if vertical (same column)
+  else if (firstIndex % gridCols === secondIndex % gridCols) {
+    return "w-1.5 h-full";
+  }
+  // Diagonal
+  else {
+    return "w-full h-1.5";
+  }
+}
+
+function getWinningLineTransform(winningLine: number[] | null, gridSize: string): React.CSSProperties {
+  if (!winningLine) return {};
+  
+  const gridCols = gridSize === "3x3" ? 3 : gridSize === "4x4" ? 4 : 5;
+  const firstIndex = winningLine[0];
+  const secondIndex = winningLine[1];
+  
+  // Check if horizontal (same row)
+  if (Math.floor(firstIndex / gridCols) === Math.floor(secondIndex / gridCols)) {
+    return {};
+  }
+  // Check if vertical (same column)
+  else if (firstIndex % gridCols === secondIndex % gridCols) {
+    return {};
+  }
+  // Diagonal - determine direction
+  else {
+    // Top-left to bottom-right diagonal
+    if (secondIndex - firstIndex === gridCols + 1) {
+      return { transform: 'rotate(45deg)' };
+    }
+    // Top-right to bottom-left diagonal
+    else {
+      return { transform: 'rotate(-45deg)' };
+    }
+  }
+}
 
 export function GameBoard() {
   const { board, makeMove, winningLine, isAiThinking, gameResult, humanPlayer, gridSize } = useGame();
@@ -98,37 +149,9 @@ export function GameBoard() {
                     <div 
                       className={cn(
                         "bg-gradient-to-r from-green-400 to-green-600 rounded-full shadow-lg",
-                        // Horizontal lines
-                        (winningLine?.[0] === 0 && winningLine?.[1] === 1 && winningLine?.[2] === 2) ||
-                        (winningLine?.[0] === 3 && winningLine?.[1] === 4 && winningLine?.[2] === 5) ||
-                        (winningLine?.[0] === 6 && winningLine?.[1] === 7 && winningLine?.[2] === 8)
-                          ? "w-full h-1.5"
-                        // Vertical lines  
-                        : (winningLine?.[0] === 0 && winningLine?.[1] === 3 && winningLine?.[2] === 6) ||
-                          (winningLine?.[0] === 1 && winningLine?.[1] === 4 && winningLine?.[2] === 7) ||
-                          (winningLine?.[0] === 2 && winningLine?.[1] === 5 && winningLine?.[2] === 8)
-                          ? "w-1.5 h-full"
-                        // Diagonal lines
-                        : "w-full h-1.5"
+                        getWinningLineStyle(winningLine, gridSize)
                       )}
-                      style={{
-                        // Special handling for diagonal lines
-                        ...(winningLine?.[0] === 2 && winningLine?.[1] === 4 && winningLine?.[2] === 6 && {
-                          transform: 'rotate(-45deg)'
-                        }),
-                        ...(winningLine?.[0] === 0 && winningLine?.[1] === 4 && winningLine?.[2] === 8 && {
-                          transform: 'rotate(45deg)'
-                        }),
-                        // Add default transform for other diagonal patterns
-                        ...(!winningLine || (winningLine?.[0] === 0 && winningLine?.[1] === 1 && winningLine?.[2] === 2) ||
-                           (winningLine?.[0] === 3 && winningLine?.[1] === 4 && winningLine?.[2] === 5) ||
-                           (winningLine?.[0] === 6 && winningLine?.[1] === 7 && winningLine?.[2] === 8) ||
-                           (winningLine?.[0] === 0 && winningLine?.[1] === 3 && winningLine?.[2] === 6) ||
-                           (winningLine?.[0] === 1 && winningLine?.[1] === 4 && winningLine?.[2] === 7) ||
-                           (winningLine?.[0] === 2 && winningLine?.[1] === 5 && winningLine?.[2] === 8)
-                           ? {}
-                           : { transform: 'rotate(45deg)' })
-                      }}
+                      style={getWinningLineTransform(winningLine, gridSize)}
                     />
                   </motion.div>
                 )}

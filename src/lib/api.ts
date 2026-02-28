@@ -70,6 +70,7 @@ export const gameApi = {
     difficulty: string;
     humanPlayer: string;
     aiPlayer: string;
+    gridSize?: string;
   }) => apiClient.post(API_ENDPOINTS.GAME_MOVE, data),
 
   saveResult: (data: {

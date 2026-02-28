@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useGameStore } from "@/lib/game/store";
+import { TURN_TIMER } from "@/constants";
 
 export function useTurnTimer() {
   const {
@@ -33,12 +34,13 @@ export function useTurnTimer() {
   useEffect(() => {
     if (isTimerActive && turnStartTime) {
       intervalRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - turnStartTime) / 1000);
+        const elapsed = (Date.now() - turnStartTime) / 1000;
         const remaining = Math.max(0, timeRemaining - elapsed);
         
+        // Update with decimal for smooth progress
         updateTimeRemaining(remaining);
         
-        if (remaining === 0) {
+        if (remaining <= 0) {
           handleTimeExpired();
           if (intervalRef.current) {
             clearInterval(intervalRef.current);

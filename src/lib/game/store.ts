@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { type Board, type Player, type GameResult, type Difficulty, createEmptyBoard } from "./logic";
 import { type GridSize, DEFAULT_GRID_SIZE } from "@/constants";
+import { getRuntimeConfig } from "@/lib/config";
 
 interface GameState {
   board: Board;
@@ -111,7 +112,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   // Timer actions
   startTurnTimer: () => {
     const { difficulty } = get();
-    const turnTime = difficulty === "easy" ? 30 : difficulty === "medium" ? 20 : 15;
+    const config = getRuntimeConfig();
+    const turnTime = config.TURN_TIMER[difficulty.toUpperCase() as keyof typeof config.TURN_TIMER];
     set({
       turnStartTime: Date.now(),
       timeRemaining: turnTime,

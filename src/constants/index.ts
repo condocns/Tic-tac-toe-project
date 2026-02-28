@@ -100,16 +100,17 @@ export const PLAYERS = {
 
 // Animation durations (ms)
 export const ANIMATION_DURATIONS = {
-  BOT_THINKING: 600,
+  BOT_THINKING: 300,  // Reduced from 600ms to 300ms
   CELL_ANIMATION: 300,
   WIN_LINE: 400,
 } as const;
 
 // Turn timer settings (seconds)
+// These will be overridden by runtime configuration
 export const TURN_TIMER = {
-  EASY: 30,    // 30 seconds for beginners - plenty of time to think
-  MEDIUM: 20,  // 20 seconds for intermediate - comfortable thinking time
-  HARD: 15,    // 15 seconds for experts - still reasonable
+  EASY: 30,    // Default values - will be updated by runtime config
+  MEDIUM: 20,  // Default values - will be updated by runtime config
+  HARD: 15,    // Default values - will be updated by runtime config
 } as const;
 
 export const DEFAULT_TURN_TIME = 20; // Default 20 seconds
