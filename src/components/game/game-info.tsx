@@ -49,29 +49,29 @@ export function GameInfo() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="bg-card/50 backdrop-blur-sm rounded-xl p-4 border border-border/50 text-center"
+            className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50 dark:border-gray-800/50 text-center shadow-sm"
           >
-            <p className="text-sm text-muted-foreground mb-2">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
               {isAiThinking ? (
                 <span className="inline-flex items-center gap-1.5">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Bot is thinking...
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-500" />
+                  <span className="text-orange-600 dark:text-orange-400">Bot is thinking...</span>
                 </span>
               ) : (
-                <span>
+                <span className="text-gray-700 dark:text-gray-300">
                   {currentTurn === humanPlayer ? "Your turn" : "Bot's turn"}
                 </span>
               )}
             </p>
             <div className="text-lg font-semibold">
               {isAiThinking ? (
-                <span className="text-orange-500 animate-pulse">
+                <span className="text-orange-600 dark:text-orange-400 animate-pulse">
                   🤔 Analyzing board...
                 </span>
               ) : currentTurn === humanPlayer ? (
-                <span className="text-blue-500">You ({humanPlayer})</span>
+                <span className="text-blue-600 dark:text-blue-400">You ({humanPlayer})</span>
               ) : (
-                <span className="text-red-500">Bot</span>
+                <span className="text-red-600 dark:text-red-400">Bot</span>
               )}
             </div>
           </motion.div>

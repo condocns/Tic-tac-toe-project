@@ -2,7 +2,7 @@
 
 import { useGameStore } from "@/lib/game/store";
 import { Button } from "@/components/ui/button";
-import { RotateCcw, Swords, Grid3x3 } from "lucide-react";
+import { RotateCcw, Play, Grid3x3, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getBotMessage } from "@/lib/game/bot-messages";
 import { DIFFICULTY_GRID_CONFIGS, type GridSize } from "@/constants";
@@ -30,19 +30,22 @@ export function GameControls() {
   const availableGridSizes = DIFFICULTY_GRID_CONFIGS[difficulty];
 
   return (
-    <div className="bg-card/50 backdrop-blur-sm rounded-xl p-6 border border-border/50 space-y-6">
+    <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm rounded-xl p-6 border border-gray-200/50 dark:border-gray-800/50 space-y-6 shadow-sm">
       {/* Difficulty selector */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-          <Swords className="h-4 w-4" />
-          Difficulty Level
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+          <Zap className="h-4 w-4 text-purple-500" />
+          Difficulty
         </h3>
         <div className="grid grid-cols-3 gap-2">
           <Button
             variant={difficulty === "easy" ? "default" : "outline"}
             size="sm"
             onClick={() => handleDifficultyChange("easy")}
-            className={cn("transition-all duration-200", difficulty === "easy" && "shadow-lg")}
+            className={cn(
+              "transition-all duration-200", 
+              difficulty === "easy" && "shadow-lg bg-green-600 hover:bg-green-700 text-white border-green-600"
+            )}
           >
             Easy
           </Button>
@@ -50,7 +53,10 @@ export function GameControls() {
             variant={difficulty === "medium" ? "default" : "outline"}
             size="sm"
             onClick={() => handleDifficultyChange("medium")}
-            className={cn("transition-all duration-200", difficulty === "medium" && "shadow-lg")}
+            className={cn(
+              "transition-all duration-200", 
+              difficulty === "medium" && "shadow-lg bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600"
+            )}
           >
             Medium
           </Button>
@@ -58,7 +64,10 @@ export function GameControls() {
             variant={difficulty === "hard" ? "default" : "outline"}
             size="sm"
             onClick={() => handleDifficultyChange("hard")}
-            className={cn("transition-all duration-200", difficulty === "hard" && "shadow-lg")}
+            className={cn(
+              "transition-all duration-200", 
+              difficulty === "hard" && "shadow-lg bg-red-600 hover:bg-red-700 text-white border-red-600"
+            )}
           >
             Hard
           </Button>
@@ -67,8 +76,8 @@ export function GameControls() {
 
       {/* Grid selector */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-          <Grid3x3 className="h-4 w-4" />
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+          <Grid3x3 className="h-4 w-4 text-blue-500" />
           Grid Size
         </h3>
         <div className="grid grid-cols-3 gap-2">
@@ -97,7 +106,7 @@ export function GameControls() {
             className="w-full h-12 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200" 
             size="lg"
           >
-            <Swords className="mr-2 h-5 w-5" />
+            <Play className="mr-2 h-5 w-5" />
             Play Again
           </Button>
         ) : (

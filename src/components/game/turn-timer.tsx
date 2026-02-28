@@ -23,17 +23,17 @@ export function TurnTimer() {
 
   if (isGameReady) {
     return (
-      <div className="bg-card/50 backdrop-blur-sm rounded-xl p-4 border border-border/50">
+      <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50 dark:border-gray-800/50 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-full bg-green-500/20">
             <Clock className="h-4 w-4 text-green-500" />
           </div>
           <div className="flex-1">
             <div className="text-center">
-              <p className="text-sm font-medium text-green-500 mb-1">
+              <p className="text-sm font-medium text-green-600 dark:text-green-400 mb-1">
                 Ready to Start!
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 Click any cell to begin the game
               </p>
             </div>
@@ -47,15 +47,15 @@ export function TurnTimer() {
   const percentage = (timeRemaining / maxTime) * 100; // Dynamic percentage based on difficulty
 
   return (
-    <div className="bg-card/50 backdrop-blur-sm rounded-xl p-4 border border-border/50">
+    <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50 dark:border-gray-800/50 shadow-sm">
       <div className="flex items-center gap-3">
         <div className={cn(
           "p-2 rounded-full transition-colors",
-          isLowTime ? "bg-red-500/20" : "bg-primary/10"
+          isLowTime ? "bg-red-500/20" : "bg-blue-500/20"
         )}>
           <Clock className={cn(
             "h-4 w-4 transition-colors",
-            isLowTime ? "text-red-500 animate-pulse" : "text-primary"
+            isLowTime ? "text-red-500 animate-pulse" : "text-blue-500"
           )} />
         </div>
         
@@ -63,29 +63,29 @@ export function TurnTimer() {
           <div className="flex items-center justify-between mb-2">
             <span className={cn(
               "text-sm font-medium transition-colors",
-              isLowTime ? "text-red-500" : "text-muted-foreground"
+              isLowTime ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-300"
             )}>
               Your Turn
             </span>
             <div className="flex items-center gap-2">
               <span className={cn(
                 "text-lg font-bold transition-colors",
-                isLowTime ? "text-red-500" : "text-foreground"
+                isLowTime ? "text-red-600 dark:text-red-400" : "text-gray-900 dark:text-gray-100"
               )}>
                 {Math.ceil(timeRemaining)}s
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-gray-600 dark:text-gray-400">
                 /{maxTime}s
               </span>
             </div>
           </div>
           
           {/* Progress bar */}
-          <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
             <div 
               className={cn(
                 "h-full transition-all duration-75 ease-out rounded-full",
-                isLowTime ? "bg-red-500" : "bg-primary"
+                isLowTime ? "bg-red-500" : "bg-blue-500"
               )}
               style={{ width: `${percentage}%` }}
             />

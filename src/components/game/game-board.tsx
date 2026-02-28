@@ -85,10 +85,10 @@ export function GameBoard() {
 
   return (
     <div className="relative">
-      <div 
-        style={gridStyle}
+        <div 
+          style={gridStyle}
         className="max-w-[350px] sm:max-w-[400px] mx-auto aspect-square"
-      >
+        >
         {board.map((cell, index) => {
           const isWinningCell = winningLine?.includes(index);
           const winningLineIndex = winningLine?.indexOf(index);
@@ -99,16 +99,25 @@ export function GameBoard() {
             <motion.button
               key={index}
               className={cn(
-                "relative flex items-center justify-center rounded-xl border-2 bg-card/80 backdrop-blur-sm text-card-foreground shadow-sm",
-                getFontSize(),
-                "font-bold",
+                "relative flex items-center justify-center rounded-xl border-2 shadow-sm",
                 "transition-all duration-300",
                 "aspect-square",
+                getFontSize(),
+                "font-bold",
+                // Enhanced dark mode support - keep card theme but improve contrast
+                "bg-white/95 dark:bg-gray-900/95",
+                "border-gray-300/70 dark:border-gray-700/70",
+                "text-gray-900 dark:text-gray-100",
+                "backdrop-blur-sm",
+                // Add subtle shadow for depth
+                "shadow-md hover:shadow-xl",
+                // Add subtle glow in dark mode
+                "dark:shadow-gray-900/50 dark:hover:shadow-blue-900/20",
                 cell === null && !isAiThinking && !gameResult
-                  ? "hover:bg-accent/80 hover:border-primary/60 hover:shadow-lg cursor-pointer hover:scale-105"
+                  ? "hover:bg-blue-50/95 dark:hover:bg-blue-900/95 hover:border-blue-400/90 dark:hover:border-blue-600/90 hover:shadow-lg cursor-pointer hover:scale-105 dark:hover:shadow-blue-900/30"
                   : "cursor-default",
-                isWinningCell && "border-primary bg-primary/20 shadow-lg",
-                !isWinningCell && "border-border/60 hover:border-border"
+                isWinningCell && "border-green-500 bg-green-100/95 dark:bg-green-900/95 text-green-900 dark:text-green-100 shadow-lg dark:shadow-green-900/30",
+                !isWinningCell && !cell && "bg-white/90 dark:bg-gray-800/90"
               )}
               onClick={() => makeMove(index)}
               whileHover={
@@ -131,7 +140,9 @@ export function GameBoard() {
                     exit={{ scale: 0, rotate: 180, opacity: 0 }}
                     transition={{ type: "spring", stiffness: 260, damping: 20 }}
                     className={cn(
-                      cell === humanPlayer ? "text-blue-500 drop-shadow-sm" : "text-red-500 drop-shadow-sm",
+                      "select-none",
+                      cell === "X" && "text-blue-600 dark:text-blue-400 font-extrabold",
+                      cell === "O" && "text-red-600 dark:text-red-400 font-extrabold",
                       isWinningCell && "drop-shadow-lg scale-110"
                     )}
                   >
