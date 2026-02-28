@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
 import { prisma } from "@/lib/prisma";
+import { isAdminEmail } from "@/lib/utils";
 
 export const { handlers, signIn, signOut } = NextAuth({
   providers: [
@@ -24,22 +25,39 @@ export const { handlers, signIn, signOut } = NextAuth({
         });
         
         if (!existingUser) {
+          // Auto-assign admin role if email is in ADMIN_EMAILS
+          const role = user.email && isAdminEmail(user.email) ? "admin" : "user";
+          
           await prisma.user.upsert({
             where: { email: user.email! },
             update: {
               name: user.name,
               image: user.image,
+              role, // Update role if changed
             },
             create: {
               id: token.sub,
               name: user.name,
               email: user.email,
               image: user.image,
+              role,
             },
           });
+          
+          token.role = role;
+        } else {
+          // Check if role needs to be updated (for existing users)
+          const expectedRole = user.email && isAdminEmail(user.email) ? "admin" : "user";
+          if (existingUser.role !== expectedRole) {
+            await prisma.user.update({
+              where: { id: token.sub },
+              data: { role: expectedRole },
+            });
+            token.role = expectedRole;
+          } else {
+            token.role = existingUser.role;
+          }
         }
-        
-        token.role = existingUser?.role ?? "user";
       }
       return token;
     },

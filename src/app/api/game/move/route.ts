@@ -3,6 +3,7 @@ import { getToken } from "next-auth/jwt";
 import { getAIMove } from "@/lib/game/ai";
 import { checkWinner, isBoardFull, getGameResult, type Board, type Difficulty, type Player } from "@/lib/game/logic";
 import { getBotMessage } from "@/lib/game/bot-messages";
+import { BOARD_SIZE } from "@/constants";
 
 interface MoveRequest {
   cellIndex: number;
@@ -21,13 +22,13 @@ export async function POST(req: NextRequest) {
   try {
     const body: MoveRequest = await req.json();
     const { cellIndex } = body;
-    const board: Board = body.board || Array(9).fill(null);
+    const board: Board = body.board || Array(BOARD_SIZE).fill(null);
     const difficulty: Difficulty = body.difficulty || "easy";
     const humanPlayer: Player = body.humanPlayer || "X";
     const aiPlayer: Player = body.aiPlayer || "O";
 
     // Validate move
-    if (cellIndex < 0 || cellIndex > 8 || board[cellIndex] !== null) {
+    if (cellIndex < 0 || cellIndex >= BOARD_SIZE || board[cellIndex] !== null) {
       return NextResponse.json({ error: "Invalid move" }, { status: 400 });
     }
 

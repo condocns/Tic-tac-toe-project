@@ -89,6 +89,7 @@ tic-tac-toe-project/
 │   │       ├── avatar.tsx
 │   │       └── ...
 │   ├── lib/                          # Utility libraries
+│   │   ├── api.ts                    # API client with error handling & retries
 │   │   ├── game/                     # Game logic and AI
 │   │   │   ├── logic.ts              # Core game rules & validation
 │   │   │   ├── ai.ts                 # AI algorithms (Easy/Hard)
@@ -98,11 +99,19 @@ tic-tac-toe-project/
 │   │   ├── prisma.ts                 # Prisma client singleton
 │   │   ├── redis.ts                  # Redis client singleton
 │   │   └── utils.ts                  # Utility functions (cn, etc.)
-│   ├── types/                         # TypeScript type definitions
-│   │   └── next-auth.d.ts            # Auth.js type augmentations
+│   ├── hooks/                        # Custom React hooks
+│   │   ├── useAuth.ts                # Authentication state management
+│   │   ├── useGame.ts                # Game state & board management
+│   │   ├── useGameHistory.ts         # Match history fetching
+│   │   ├── useLeaderboard.ts         # Leaderboard data & pagination
+│   │   └── useUserStats.ts           # User statistics & performance
+│   ├── constants/                    # Application constants
+│   │   └── index.ts                  # API endpoints, game constants
+│   ├── types/                        # TypeScript type definitions
+│   │   └── next-auth.d.ts           # Auth.js type augmentations
 │   ├── __tests__/                     # Unit tests
 │   │   └── game/                     # Game logic & AI tests
-│   ├── middleware.ts                 # Route protection middleware
+│   ├── proxy.ts                      # Route protection proxy
 │   └── layout.tsx                    # App layout (if separate from app/layout)
 ├── prisma/                            # Database schema & migrations
 │   ├── schema.prisma                  # Prisma schema definition
@@ -208,7 +217,7 @@ flowchart LR
 
 **RBAC Implementation:**
 ```typescript
-// src/middleware.ts
+// src/proxy.ts
 export default auth((req) => {
   if (!req.auth) return NextResponse.redirect("/login");
   return NextResponse.next();

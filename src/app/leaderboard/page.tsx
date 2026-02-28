@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Trophy, Medal, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLeaderboard } from "@/hooks/useLeaderboard";
 
 interface LeaderboardUser {
   id: string;
@@ -33,28 +34,14 @@ interface LeaderboardData {
 
 export default function LeaderboardPage() {
   const { data: session, status } = useSession();
-  const [data, setData] = useState<LeaderboardData | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
 
-  const fetchLeaderboard = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ page: String(page), limit: "20" });
-      if (search) params.set("search", search);
-      const res = await fetch(`/api/leaderboard?${params}`);
-      if (res.ok) setData(await res.json());
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search]);
-
-  useEffect(() => {
-    fetchLeaderboard();
-    const interval = setInterval(fetchLeaderboard, 30000);
-    return () => clearInterval(interval);
-  }, [fetchLeaderboard]);
+  const { data, isLoading, error } = useLeaderboard({ page, limit: 20, search }) as {
+  data: LeaderboardData | null;
+  isLoading: boolean;
+  error: unknown;
+};
 
   if (status === "loading") {
     return (
@@ -95,7 +82,7 @@ export default function LeaderboardPage() {
           <CardTitle className="text-lg">Rankings</CardTitle>
         </CardHeader>
         <CardContent className="space-y-1">
-          {loading && !data ? (
+          {isLoading || !data ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
             </div>

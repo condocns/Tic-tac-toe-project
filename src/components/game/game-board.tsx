@@ -1,76 +1,65 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useGameStore } from "@/lib/game/store";
+import { useGame } from "@/hooks/useGame";
 import { cn } from "@/lib/utils";
+import { BOARD_CONFIGS } from "@/constants";
 
 export function GameBoard() {
-  const { board, winningLine, isAiThinking, gameResult, humanPlayer } = useGameStore();
+  const { board, makeMove, winningLine, isAiThinking, gameResult, humanPlayer, gridSize } = useGame();
+  
+  const gridConfig = BOARD_CONFIGS[gridSize as keyof typeof BOARD_CONFIGS];
+  
+  // Use CSS Grid with dynamic columns instead of Tailwind classes
+  const gridStyle = {
+    display: 'grid',
+    gridTemplateColumns: `repeat(${gridConfig.cols}, 1fr)`,
+    gridTemplateRows: `repeat(${gridConfig.rows}, 1fr)`,
+    gap: '0.5rem',
+    width: '100%',
+    height: '100%',
+    padding: '0.5rem',
+    minHeight: '280px', // Ensure minimum height for larger grids
+  } as const;
 
-  const handleCellClick = async (index: number) => {
-    if (board[index] !== null || isAiThinking || gameResult !== null) return;
-
-    const response = await fetch("/api/game/move", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cellIndex: index }),
-    });
-
-    if (!response.ok) return;
-
-    const data = await response.json();
-    const store = useGameStore.getState();
-
-    store.addMove(index);
-    store.setBoard(data.boardAfterPlayer);
-    store.setBotMessage(data.botMessage || "");
-
-    if (data.gameResult) {
-      store.setGameResult(data.gameResult);
-      store.setWinningLine(data.winningLine);
-      store.endGame();
-      return;
-    }
-
-    // AI move
-    store.setIsAiThinking(true);
-    store.setCurrentTurn(store.aiPlayer);
-
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    store.addMove(data.aiMove);
-    store.setBoard(data.boardAfterAI);
-    store.setBotMessage(data.botMessageAfterAI || "");
-    store.setIsAiThinking(false);
-    store.setCurrentTurn(store.humanPlayer);
-
-    if (data.gameResultAfterAI) {
-      store.setGameResult(data.gameResultAfterAI);
-      store.setWinningLine(data.winningLineAfterAI);
-      store.endGame();
+  // Adjust font size based on grid size
+  const getFontSize = () => {
+    switch (gridSize) {
+      case '3x3': return 'text-3xl sm:text-4xl md:text-5xl';
+      case '4x4': return 'text-2xl sm:text-3xl md:text-4xl';
+      case '5x5': return 'text-xl sm:text-2xl md:text-3xl';
+      default: return 'text-3xl sm:text-4xl md:text-5xl';
     }
   };
 
   return (
     <div className="relative">
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full max-w-[320px] sm:max-w-[380px] mx-auto aspect-square">
+      <div 
+        style={gridStyle}
+        className="max-w-[320px] sm:max-w-[380px] mx-auto aspect-square"
+      >
         {board.map((cell, index) => {
           const isWinningCell = winningLine?.includes(index);
+          const winningLineIndex = winningLine?.indexOf(index);
+          const isWinningLineStart = winningLineIndex === 0;
+          const isWinningLineEnd = winningLineIndex === winningLine?.length! - 1;
 
           return (
             <motion.button
               key={index}
               className={cn(
                 "relative flex items-center justify-center rounded-xl border-2 bg-card text-card-foreground",
-                "text-3xl sm:text-4xl md:text-5xl font-bold",
-                "transition-colors duration-200",
+                getFontSize(),
+                "font-bold",
+                "transition-all duration-200",
+                "aspect-square", // Ensure square cells
                 cell === null && !isAiThinking && !gameResult
                   ? "hover:bg-accent hover:border-primary/50 cursor-pointer"
                   : "cursor-default",
                 isWinningCell && "border-primary bg-primary/10",
                 !isWinningCell && "border-border"
               )}
-              onClick={() => handleCellClick(index)}
+              onClick={() => makeMove(index)}
               whileHover={
                 cell === null && !isAiThinking && !gameResult
                   ? { scale: 1.05 }
@@ -98,52 +87,57 @@ export function GameBoard() {
                     {cell}
                   </motion.span>
                 )}
+                {isWinningCell && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                  >
+                    <div 
+                      className={cn(
+                        "bg-green-500 rounded-full",
+                        // Horizontal lines
+                        (winningLine?.[0] === 0 && winningLine?.[1] === 1 && winningLine?.[2] === 2) ||
+                        (winningLine?.[0] === 3 && winningLine?.[1] === 4 && winningLine?.[2] === 5) ||
+                        (winningLine?.[0] === 6 && winningLine?.[1] === 7 && winningLine?.[2] === 8)
+                          ? "w-full h-1"
+                        // Vertical lines  
+                        : (winningLine?.[0] === 0 && winningLine?.[1] === 3 && winningLine?.[2] === 6) ||
+                          (winningLine?.[0] === 1 && winningLine?.[1] === 4 && winningLine?.[2] === 7) ||
+                          (winningLine?.[0] === 2 && winningLine?.[1] === 5 && winningLine?.[2] === 8)
+                          ? "w-1 h-full"
+                        // Diagonal lines
+                        : "w-full h-1" // Default to horizontal, will be overridden by style
+                      )}
+                      style={{
+                        // Special handling for diagonal lines
+                        ...(winningLine?.[0] === 2 && winningLine?.[1] === 4 && winningLine?.[2] === 6 && {
+                          transform: 'rotate(-45deg)'
+                        }),
+                        ...(winningLine?.[0] === 0 && winningLine?.[1] === 4 && winningLine?.[2] === 8 && {
+                          transform: 'rotate(45deg)'
+                        }),
+                        // Add default transform for other diagonal patterns (for larger grids)
+                        ...(!winningLine || (winningLine?.[0] === 0 && winningLine?.[1] === 1 && winningLine?.[2] === 2) ||
+                           (winningLine?.[0] === 3 && winningLine?.[1] === 4 && winningLine?.[2] === 5) ||
+                           (winningLine?.[0] === 6 && winningLine?.[1] === 7 && winningLine?.[2] === 8) ||
+                           (winningLine?.[0] === 0 && winningLine?.[1] === 3 && winningLine?.[2] === 6) ||
+                           (winningLine?.[0] === 1 && winningLine?.[1] === 4 && winningLine?.[2] === 7) ||
+                           (winningLine?.[0] === 2 && winningLine?.[1] === 5 && winningLine?.[2] === 8)
+                           ? {}
+                           : { transform: 'rotate(45deg)' })
+                      }}
+                    />
+                  </motion.div>
+                )}
               </AnimatePresence>
             </motion.button>
           );
         })}
       </div>
-
-      {/* Winning line overlay */}
-      <AnimatePresence>
-        {winningLine && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute inset-0 pointer-events-none"
-          >
-            <WinLine cells={winningLine} />
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
 
-function WinLine({ cells }: { cells: number[] }) {
-  const getLineStyle = (cells: number[]): React.CSSProperties => {
-    const positions: Record<string, React.CSSProperties> = {
-      "0,1,2": { top: "16.6%", left: "5%", width: "90%", height: "3px", transform: "translateY(-50%)" },
-      "3,4,5": { top: "50%", left: "5%", width: "90%", height: "3px", transform: "translateY(-50%)" },
-      "6,7,8": { top: "83.3%", left: "5%", width: "90%", height: "3px", transform: "translateY(-50%)" },
-      "0,3,6": { top: "5%", left: "16.6%", width: "3px", height: "90%", transform: "translateX(-50%)" },
-      "1,4,7": { top: "5%", left: "50%", width: "3px", height: "90%", transform: "translateX(-50%)" },
-      "2,5,8": { top: "5%", left: "83.3%", width: "3px", height: "90%", transform: "translateX(-50%)" },
-      "0,4,8": { top: "5%", left: "5%", width: "127%", height: "3px", transform: "rotate(45deg)", transformOrigin: "top left" },
-      "2,4,6": { top: "5%", right: "5%", width: "127%", height: "3px", transform: "rotate(-45deg)", transformOrigin: "top right" },
-    };
-
-    const key = cells.join(",");
-    return positions[key] || {};
-  };
-
-  return (
-    <motion.div
-      className="absolute bg-primary rounded-full"
-      style={getLineStyle(cells)}
-      initial={{ scaleX: 0 }}
-      animate={{ scaleX: 1 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-    />
-  );
-}

@@ -8,6 +8,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum GameResult {
+  WIN
+  LOSS
+  DRAW
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -25,14 +37,6 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model User {
@@ -53,31 +57,26 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   accounts Account[]
-  sessions Session[]
   games    Game[]
 
   @@index([score(sort: Desc)])
+  @@index([email])
 }
 
 model Game {
-  id         String   @id @default(cuid())
+  id         String      @id @default(cuid())
   userId     String
-  result     String   // "win", "loss", "draw"
-  difficulty String   // "easy", "hard"
-  moves      String   // JSON string of move sequence e.g. "[0,4,8,2,6]"
-  duration   Int      // game duration in seconds
-  createdAt  DateTime @default(now())
+  result     GameResult
+  difficulty Difficulty
+  moves      String      @db.Text // JSON string of move sequence
+  duration   Int         // game duration in seconds
+  createdAt  DateTime    @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([createdAt(sort: Desc)])
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
+  @@index([result])
+  @@index([difficulty])
+  @@index([userId, result])
 }

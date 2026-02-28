@@ -56,8 +56,8 @@ function getHardMove(board: Board, aiPlayer: Player, humanPlayer: Player): numbe
 function getEasyMove(board: Board, aiPlayer: Player, humanPlayer: Player): number {
   const moves = getAvailableMoves(board);
 
-  // 30% chance to make a smart move, 70% random
-  if (Math.random() < 0.3) {
+  // 60% chance to make smart move, 40% random
+  if (Math.random() < 0.6) {
     // Check if AI can win in one move
     for (const move of moves) {
       board[move] = aiPlayer;
@@ -73,9 +73,43 @@ function getEasyMove(board: Board, aiPlayer: Player, humanPlayer: Player): numbe
       board[move] = null;
       if (winner === humanPlayer) return move;
     }
+
+    // Take center if available (strategic position)
+    if (board[4] === null) return 4;
+    
+    // Take corners (strategic positions)
+    const corners = [0, 2, 6, 8].filter(i => board[i] === null);
+    if (corners.length > 0) {
+      return corners[Math.floor(Math.random() * corners.length)];
+    }
   }
 
-  // Random move
+  // Random move as fallback
+  return moves[Math.floor(Math.random() * moves.length)];
+}
+
+function getMediumMove(board: Board, aiPlayer: Player, humanPlayer: Player): number {
+  const moves = getAvailableMoves(board);
+
+  // 80% smart moves, 20% random
+  if (Math.random() < 0.8) {
+    // Use minimax with limited depth for "good enough" moves
+    let bestScore = -Infinity;
+    let bestMove = moves[0];
+
+    for (const move of moves) {
+      board[move] = aiPlayer;
+      const score = minimax(board, 2, false, aiPlayer, humanPlayer); // Limited depth
+      board[move] = null;
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = move;
+      }
+    }
+    return bestMove;
+  }
+
+  // Random move as fallback
   return moves[Math.floor(Math.random() * moves.length)];
 }
 
@@ -85,8 +119,12 @@ export function getAIMove(
   aiPlayer: Player,
   humanPlayer: Player
 ): number {
-  if (difficulty === "hard") {
-    return getHardMove([...board], aiPlayer, humanPlayer);
+  switch (difficulty) {
+    case "hard":
+      return getHardMove([...board], aiPlayer, humanPlayer);
+    case "medium":
+      return getMediumMove([...board], aiPlayer, humanPlayer);
+    case "easy":
+      return getEasyMove([...board], aiPlayer, humanPlayer);
   }
-  return getEasyMove([...board], aiPlayer, humanPlayer);
 }

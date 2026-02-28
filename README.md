@@ -177,14 +177,25 @@ src/
 │   ├── providers/               # SessionProvider
 │   └── ui/                      # ShadCN components (Button, Card, Avatar)
 ├── lib/
+│   ├── api.ts                   # API client with error handling
 │   ├── game/                    # logic.ts, ai.ts, bot-messages.ts, store.ts
 │   ├── auth.ts                  # NextAuth config
 │   ├── prisma.ts                # Prisma client singleton
 │   ├── redis.ts                 # Redis client singleton
 │   └── utils.ts                 # cn() utility
-├── __tests__/
-│   └── game/                    # Unit tests for logic & AI
-└── middleware.ts                 # Route protection
+├── hooks/                       # Custom React hooks
+│   ├── useAuth.ts               # Authentication state
+│   ├── useGame.ts              # Game state management
+│   ├── useGameHistory.ts       # Match history
+│   ├── useLeaderboard.ts       # Leaderboard data
+│   └── useUserStats.ts         # User statistics
+├── constants/                   # Application constants
+│   └── index.ts                # API endpoints, game constants
+├── types/                       # TypeScript type definitions
+│   └── next-auth.d.ts          # Auth.js type augmentations
+├── __tests__/                   # Unit tests
+│   └── game/                   # Game logic & AI tests
+└── proxy.ts                     # Route protection
 ```
 
 ## Design Decisions

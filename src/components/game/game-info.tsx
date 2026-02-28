@@ -40,7 +40,7 @@ export function GameInfo() {
   const resultInfo = getResultInfo();
 
   return (
-    <div className="space-y-3 w-full max-w-[380px] mx-auto">
+    <div className="space-y-3 w-full max-w-[380px] mx-auto min-h-[120px]">
       {/* Turn indicator */}
       <AnimatePresence mode="wait">
         {!gameResult && (
@@ -94,7 +94,7 @@ export function GameInfo() {
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 10 }}
-            className="flex items-start gap-2 rounded-lg bg-muted/50 p-3"
+            className="flex items-start gap-2 rounded-lg bg-muted/50 p-3 min-h-[60px]"
           >
             <Bot className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
             <p className="text-sm text-muted-foreground italic">{botMessage}</p>

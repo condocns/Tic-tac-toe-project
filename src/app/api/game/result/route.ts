@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 interface GameResultRequest {
   result: "win" | "loss" | "draw";
-  difficulty: "easy" | "hard";
+  difficulty: "easy" | "medium" | "hard";
   moves: number[];
   duration: number;
 }
@@ -53,8 +53,8 @@ export async function POST(req: NextRequest) {
       await tx.game.create({
         data: {
           userId: token.sub!,
-          result,
-          difficulty,
+          result: result.toUpperCase() as "WIN" | "LOSS" | "DRAW",
+          difficulty: difficulty.toUpperCase() as "EASY" | "MEDIUM" | "HARD",
           moves: JSON.stringify(moves),
           duration,
         },

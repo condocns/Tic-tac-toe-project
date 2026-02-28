@@ -1,29 +1,21 @@
+import { WINNING_COMBINATIONS, BOARD_SIZE, BOARD_CONFIGS, type GridSize } from "@/constants";
+
 export type Player = "X" | "O";
 export type CellValue = Player | null;
 export type Board = CellValue[];
 export type GameResult = "win" | "loss" | "draw" | null;
-export type Difficulty = "easy" | "hard";
+export type Difficulty = "easy" | "medium" | "hard";
 
-export const WINNING_COMBINATIONS = [
-  [0, 1, 2],
-  [3, 4, 5],
-  [6, 7, 8],
-  [0, 3, 6],
-  [1, 4, 7],
-  [2, 5, 8],
-  [0, 4, 8],
-  [2, 4, 6],
-] as const;
-
-export function createEmptyBoard(): Board {
-  return Array(9).fill(null);
+export function createEmptyBoard(gridSize: GridSize = "3x3"): Board {
+  return Array(BOARD_CONFIGS[gridSize].size).fill(null);
 }
 
-export function checkWinner(board: Board): { winner: Player | null; line: number[] | null } {
-  for (const combo of WINNING_COMBINATIONS) {
-    const [a, b, c] = combo;
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-      return { winner: board[a] as Player, line: [a, b, c] };
+export function checkWinner(board: Board, gridSize: GridSize = "3x3"): { winner: Player | null; line: number[] | null } {
+  const combinations = BOARD_CONFIGS[gridSize].winningCombinations;
+  for (const combo of combinations) {
+    const [first, ...rest] = combo;
+    if (board[first] && rest.every(index => board[index] === board[first])) {
+      return { winner: board[first] as Player, line: [...combo] };
     }
   }
   return { winner: null, line: null };
@@ -40,8 +32,8 @@ export function getAvailableMoves(board: Board): number[] {
   }, []);
 }
 
-export function getGameResult(board: Board, humanPlayer: Player): GameResult {
-  const { winner } = checkWinner(board);
+export function getGameResult(board: Board, humanPlayer: Player, gridSize: GridSize = "3x3"): GameResult {
+  const { winner } = checkWinner(board, gridSize);
   if (winner === humanPlayer) return "win";
   if (winner !== null) return "loss";
   if (isBoardFull(board)) return "draw";

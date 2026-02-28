@@ -52,7 +52,7 @@ const messages: Record<MessageCategory, string[]> = {
     "Impossible! How did you...?! 😱",
     "Okay, you got me. Well played! 👏",
     "I demand a rematch immediately!",
-    "Error 404: My dignity not found.",
+    "You're better than I expected! 🤝",
   ],
   draw: [
     "A draw? I'll take it... this time.",

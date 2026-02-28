@@ -14,8 +14,8 @@ export async function GET(req: NextRequest) {
   try {
     const cacheKey = `${CACHE_KEY}:${page}:${limit}:${search}`;
 
-    // Try cache first
-    const cached = await redis.get(cacheKey).catch(() => null);
+    // Try cache first (only if Redis is configured)
+    const cached = redis ? await redis.get(cacheKey).catch(() => null) : null;
     if (cached) {
       return NextResponse.json(cached);
     }
@@ -55,8 +55,10 @@ export async function GET(req: NextRequest) {
       },
     };
 
-    // Cache result
-    await redis.set(cacheKey, JSON.stringify(result), { ex: CACHE_TTL }).catch(() => {});
+    // Cache result (only if Redis is configured)
+    if (redis) {
+      await redis.set(cacheKey, JSON.stringify(result), { ex: CACHE_TTL }).catch(() => {});
+    }
 
     return NextResponse.json(result);
   } catch {
