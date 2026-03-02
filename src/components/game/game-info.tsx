@@ -6,7 +6,7 @@ import { Bot, Loader2, Trophy, Frown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function GameInfo() {
-  const { gameResult, botMessage, isAiThinking, currentTurn, humanPlayer } =
+  const { gameResult, botMessage, isAiThinking, currentTurn, humanPlayer, bonusAwarded } =
     useGameStore();
 
   const getResultInfo = () => {
@@ -14,7 +14,7 @@ export function GameInfo() {
       case "win":
         return {
           icon: <Trophy className="h-5 w-5 text-yellow-500" />,
-          text: "You Win! +1 Point",
+          text: bonusAwarded ? "You Win! +2 Points (Streak Bonus!)" : "You Win! +1 Point",
           color: "text-green-500",
           bg: "bg-green-500/10 border-green-500/20",
         };

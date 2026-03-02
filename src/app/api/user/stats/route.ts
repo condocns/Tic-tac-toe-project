@@ -8,9 +8,16 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const tokenEmail = typeof token.email === "string" ? token.email : undefined;
+
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: token.sub },
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: token.sub },
+          ...(tokenEmail ? [{ email: tokenEmail }] : []),
+        ],
+      },
       select: {
         score: true,
         wins: true,

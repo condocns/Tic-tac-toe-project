@@ -1,4 +1,5 @@
 import { API_ENDPOINTS } from "@/constants";
+import type { UserStats } from "@/types/user";
 
 // Enhanced fetch with error handling and retries
 class ApiClient {
@@ -85,7 +86,7 @@ export const gameApi = {
 };
 
 export const userApi = {
-  getStats: () => apiClient.get(API_ENDPOINTS.USER_STATS),
+  getStats: () => apiClient.get<UserStats>(API_ENDPOINTS.USER_STATS),
 };
 
 export const leaderboardApi = {

@@ -1,15 +1,17 @@
 "use client";
 
 import { useCallback } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useGameStore } from "@/lib/game/store";
 import { gameApi } from "@/lib/api";
 import { ANIMATION_DURATIONS } from "@/constants";
 import type { Board, GameResult } from "@/lib/game/logic";
 import { getBotMessage } from "@/lib/game/bot-messages";
 import { getRuntimeConfig } from "@/lib/config";
+import type { UserStats } from "@/types/user";
 
 export function useGame() {
+  const queryClient = useQueryClient();
   const {
     board,
     humanPlayer,
@@ -21,6 +23,7 @@ export function useGame() {
     winningLine,
     moves,
     resultSaved,
+    currentStreak,
     addMove,
     setBoard,
     setIsAiThinking,
@@ -31,6 +34,8 @@ export function useGame() {
     endGame,
     stopTurnTimer,
     setResultSaved,
+    setCurrentStreak,
+    setBonusAwarded,
   } = useGameStore();
 
   const moveMutation = useMutation({
@@ -72,24 +77,96 @@ export function useGame() {
       return; // Prevent duplicate calls
     }
     
+    // Calculate streak locally to update UI immediately
+    let newStreak = currentStreak;
+    let newBonusAwarded = false;
+    
+    if (result === "win") {
+      newStreak = currentStreak + 1;
+      if (newStreak === 3) {
+        newBonusAwarded = true;
+        // The server will reset the streak after 3 wins, so we should too
+        // But we wait to do it until after the API call to show the bonus message
+      }
+      setCurrentStreak(newStreak);
+      setBonusAwarded(newBonusAwarded);
+    } else if (result === "loss") {
+      newStreak = 0;
+      setCurrentStreak(0);
+      setBonusAwarded(false);
+    } else {
+      setBonusAwarded(false);
+    }
+    
     // Set flag immediately to prevent duplicates
     setResultSaved(true);
     
     try {
       console.log("📤 Calling saveResult API...");
-      await saveResultMutation.mutateAsync({
+      const response = await saveResultMutation.mutateAsync({
         result,
         difficulty,
         moves,
         duration,
-      });
-      console.log("✅ Save result successful");
+      }) as any;
+      console.log("✅ Save result successful", response);
+      
+      // Update with real streak from server if available
+      // The server resets streak after 3 wins, so we need to capture that
+      // but if we just got a bonus, we don't want to overwrite our local 
+      // newStreak=3 until the next game starts, so the message stays up
+      if (response && response.currentStreak !== undefined && !newBonusAwarded) {
+        setCurrentStreak(response.currentStreak);
+      }
+      
+      // Invalidate user stats query to refresh the data
+      queryClient.invalidateQueries({ queryKey: ["userStats"] });
+      console.log("🔄 User stats query invalidated");
+      
+      // Optimistically update stats and DOM to prevent React re-renders
+      const currentStats = queryClient.getQueryData<UserStats>(["userStats"]);
+      if (currentStats) {
+        const updatedStats = { ...currentStats };
+        if (result === "win") {
+          updatedStats.wins += 1;
+          updatedStats.score += 1;
+          
+          // Apply streak bonus immediately in UI if applicable
+          if ((currentStats.currentStreak || 0) + 1 === 3) {
+            updatedStats.score += 1;
+          }
+          updatedStats.currentStreak = (currentStats.currentStreak || 0) + 1;
+        } else if (result === "loss") {
+          updatedStats.losses += 1;
+          updatedStats.score = Math.max(0, updatedStats.score - 1);
+          updatedStats.currentStreak = 0;
+        } else {
+          updatedStats.draws += 1;
+        }
+        updatedStats.gamesPlayed += 1;
+        
+        // Update React Query state (won't trigger re-render if we configure it not to)
+        queryClient.setQueryData(["userStats"], updatedStats);
+        
+        // Update DOM directly to avoid any React re-render of the StatsDisplay
+        const winsEl = document.getElementById("stat-wins");
+        const lossesEl = document.getElementById("stat-losses");
+        const drawsEl = document.getElementById("stat-draws");
+        const scoreEl = document.getElementById("stat-score");
+        
+        if (winsEl) winsEl.textContent = updatedStats.wins.toString();
+        if (lossesEl) lossesEl.textContent = updatedStats.losses.toString();
+        if (drawsEl) drawsEl.textContent = updatedStats.draws.toString();
+        if (scoreEl) scoreEl.textContent = updatedStats.score.toString();
+        
+        console.log("⚡ Optimistically updated user stats in DOM:", updatedStats);
+      }
     } catch (error) {
       console.error("❌ Failed to save game result:", error);
       // Reset flag on error so it can be retried
       setResultSaved(false);
     }
-  }, [resultSaved, difficulty, moves, saveResultMutation, setResultSaved]);
+  }, [resultSaved, difficulty, moves, saveResultMutation, setResultSaved, queryClient, currentStreak, setCurrentStreak, setBonusAwarded]);
 
   const makeMove = useCallback(
     async (cellIndex: number) => {

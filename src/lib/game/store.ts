@@ -18,6 +18,8 @@ interface GameState {
   gameStartTime: number | null;
   gameDuration: number;
   resultSaved: boolean; // Prevent duplicate API calls
+  currentStreak: number; // Track winning streak for bonus points
+  bonusAwarded: boolean; // Track if bonus was awarded this game
   
   // Turn timer
   turnStartTime: number | null;
@@ -39,6 +41,8 @@ interface GameState {
   startGame: () => void;
   endGame: () => void;
   setResultSaved: (saved: boolean) => void; // New action
+  setCurrentStreak: (streak: number) => void; // New action
+  setBonusAwarded: (awarded: boolean) => void; // Track if bonus was given
   
   // Timer actions
   startTurnTimer: () => void;
@@ -62,6 +66,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   gameStartTime: null,
   gameDuration: 0,
   resultSaved: false, // Prevent duplicate API calls
+  currentStreak: 0, // Initial streak is 0
+  bonusAwarded: false, // Initial bonus state is false
   
   // Timer state
   turnStartTime: null,
@@ -87,6 +93,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   setBotMessage: (message) => set({ botMessage: message }),
   addMove: (index) => set((state) => ({ moves: [...state.moves, index] })),
   setResultSaved: (saved) => set({ resultSaved: saved }), // New action
+  setCurrentStreak: (streak) => set({ currentStreak: streak }), // New action
+  setBonusAwarded: (awarded) => set({ bonusAwarded: awarded }), // New action
 
   resetGame: () =>
     set({
@@ -100,6 +108,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       gameStartTime: null,
       gameDuration: 0,
       resultSaved: false, // Reset result saved flag
+      // Do NOT reset currentStreak here, it should persist across games!
+      bonusAwarded: false, // Reset bonus awarded flag for new game
       turnStartTime: null,
       timeRemaining: 20,
       isTimerActive: false,
