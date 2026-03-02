@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { type Board, type Player, type GameResult, type Difficulty, createEmptyBoard } from "./logic";
+import { type Board, type Player, type GameResult, type Difficulty, createEmptyBoard, getGameResult, checkWinner } from "./logic";
 import { type GridSize, DEFAULT_GRID_SIZE } from "@/constants";
 import { getRuntimeConfig } from "@/lib/config";
 
@@ -144,7 +144,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   updateTimeRemaining: (time) => set({ timeRemaining: time }),
   
   handleTimeExpired: () => {
-    const { currentTurn, humanPlayer, isAiThinking, board, aiPlayer, addMove } = get();
+    const { currentTurn, humanPlayer, isAiThinking, board, aiPlayer, addMove, gridSize } = get();
     
     // Only handle timeout for human turn, not AI turn
     if (currentTurn === humanPlayer && !isAiThinking) {
@@ -163,13 +163,36 @@ export const useGameStore = create<GameState>((set, get) => ({
         // Add the move to history
         addMove(aiMoveIndex);
         
-        set({
-          board: newBoard,
-          currentTurn: humanPlayer, // Switch back to human turn
-          turnStartTime: null,
-          isTimerActive: false,
-          botMessage: "⏰ Time's up! AI took a random move!",
-        });
+        // Check for win/draw after penalty move
+        const result = getGameResult(newBoard, humanPlayer, gridSize);
+        const { line } = checkWinner(newBoard, gridSize);
+        
+        if (result) {
+          // Game over from penalty move
+          set({
+            board: newBoard,
+            turnStartTime: null,
+            isTimerActive: false,
+            gameResult: result,
+            winningLine: line,
+            botMessage: result === "loss" ? "⏰ Time's up! And I won!" : "⏰ Time's up! It's a draw.",
+          });
+          
+          // Also set the end time
+          const { gameStartTime } = get();
+          if (gameStartTime) {
+            set({ gameDuration: Math.floor((Date.now() - gameStartTime) / 1000) });
+          }
+        } else {
+          // Game continues
+          set({
+            board: newBoard,
+            currentTurn: humanPlayer, // Switch back to human turn
+            turnStartTime: null,
+            isTimerActive: false,
+            botMessage: "⏰ Time's up! AI took a random move!",
+          });
+        }
       } else {
         // No moves available, game should be over
         set({

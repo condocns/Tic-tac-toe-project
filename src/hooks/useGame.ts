@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useGameStore } from "@/lib/game/store";
 import { gameApi } from "@/lib/api";
@@ -124,19 +124,20 @@ export function useGame() {
       queryClient.invalidateQueries({ queryKey: ["userStats"] });
       console.log("🔄 User stats query invalidated");
       
-      // Optimistically update stats and DOM to prevent React re-renders
-      const currentStats = queryClient.getQueryData<UserStats>(["userStats"]);
-      if (currentStats) {
-        const updatedStats = { ...currentStats };
+      // Optimistically update stats
+      queryClient.setQueryData<UserStats>(["userStats"], (oldStats) => {
+        if (!oldStats) return oldStats;
+        
+        const updatedStats = { ...oldStats };
+        
         if (result === "win") {
           updatedStats.wins += 1;
           updatedStats.score += 1;
-          
           // Apply streak bonus immediately in UI if applicable
-          if ((currentStats.currentStreak || 0) + 1 === 3) {
+          if (newBonusAwarded) {
             updatedStats.score += 1;
           }
-          updatedStats.currentStreak = (currentStats.currentStreak || 0) + 1;
+          updatedStats.currentStreak = (updatedStats.currentStreak || 0) + 1;
         } else if (result === "loss") {
           updatedStats.losses += 1;
           updatedStats.score = Math.max(0, updatedStats.score - 1);
@@ -144,24 +145,12 @@ export function useGame() {
         } else {
           updatedStats.draws += 1;
         }
+        
         updatedStats.gamesPlayed += 1;
+        console.log("⚡ Optimistically updated user stats via React Query:", updatedStats);
         
-        // Update React Query state (won't trigger re-render if we configure it not to)
-        queryClient.setQueryData(["userStats"], updatedStats);
-        
-        // Update DOM directly to avoid any React re-render of the StatsDisplay
-        const winsEl = document.getElementById("stat-wins");
-        const lossesEl = document.getElementById("stat-losses");
-        const drawsEl = document.getElementById("stat-draws");
-        const scoreEl = document.getElementById("stat-score");
-        
-        if (winsEl) winsEl.textContent = updatedStats.wins.toString();
-        if (lossesEl) lossesEl.textContent = updatedStats.losses.toString();
-        if (drawsEl) drawsEl.textContent = updatedStats.draws.toString();
-        if (scoreEl) scoreEl.textContent = updatedStats.score.toString();
-        
-        console.log("⚡ Optimistically updated user stats in DOM:", updatedStats);
-      }
+        return updatedStats;
+      });
     } catch (error) {
       console.error("❌ Failed to save game result:", error);
       // Reset flag on error so it can be retried
@@ -170,12 +159,23 @@ export function useGame() {
   }, [resultSaved, difficulty, moves, saveResultMutation, setResultSaved, queryClient, currentStreak, setCurrentStreak, setBonusAwarded]);
 
   const handleTimeExpired = useCallback(() => {
-    // Note: Store's handleTimeExpired also exists, but useGame orchestrates the API calls
+    // Note: Store's handleTimeExpired handles the state updates
     const state = useGameStore.getState();
-    if (state.currentTurn === state.humanPlayer && !state.isAiThinking) {
-      // Logic moved fully to store or we can keep some here
+    if (state.gameResult && !state.resultSaved) {
+      // If the timeout caused a game over (e.g. human timeout -> bot random move -> bot wins),
+      // we need to save the result.
+      saveGameResult(state.gameResult);
     }
-  }, []);
+  }, [saveGameResult]);
+
+  // We need to call handleTimeExpired when gameResult changes if it was caused by a timeout
+  // But actually, we can just use an effect to watch gameResult and resultSaved
+  useEffect(() => {
+    const state = useGameStore.getState();
+    if (gameResult && !resultSaved && state.gameDuration > 0) {
+      saveGameResult(gameResult);
+    }
+  }, [gameResult, resultSaved, saveGameResult]);
 
   const makeMove = useCallback(
     async (cellIndex: number) => {
