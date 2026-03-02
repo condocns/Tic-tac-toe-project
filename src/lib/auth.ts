@@ -14,12 +14,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Google({
       clientId: process.env.AUTH_GOOGLE_ID!,
       clientSecret: process.env.AUTH_GOOGLE_SECRET!,
-      allowDangerousEmailAccountLinking: true,
+      allowDangerousEmailAccountLinking: true, // implement later for email verification
     }),
     GitHub({
       clientId: process.env.AUTH_GITHUB_ID!,
       clientSecret: process.env.AUTH_GITHUB_SECRET!,
-      allowDangerousEmailAccountLinking: true,
+      allowDangerousEmailAccountLinking: true, // implement later for email verification
     }),
     Credentials({
       name: "Credentials",
