@@ -1,5 +1,7 @@
 import { create } from "zustand";
-import { type Board, type Player, type GameResult, type Difficulty, createEmptyBoard } from "./logic";
+import { type Board, type Player, type GameResult, type Difficulty, createEmptyBoard, getGameResult, checkWinner } from "./logic";
+import { type GridSize, DEFAULT_GRID_SIZE } from "@/constants";
+import { getRuntimeConfig } from "@/lib/config";
 
 interface GameState {
   board: Board;
@@ -7,6 +9,7 @@ interface GameState {
   aiPlayer: Player;
   currentTurn: Player;
   difficulty: Difficulty;
+  gridSize: GridSize;
   gameResult: GameResult;
   winningLine: number[] | null;
   isAiThinking: boolean;
@@ -14,9 +17,18 @@ interface GameState {
   moves: number[];
   gameStartTime: number | null;
   gameDuration: number;
+  resultSaved: boolean; // Prevent duplicate API calls
+  currentStreak: number; // Track winning streak for bonus points
+  bonusAwarded: boolean; // Track if bonus was awarded this game
+  
+  // Turn timer
+  turnStartTime: number | null;
+  timeRemaining: number;
+  isTimerActive: boolean;
 
   // Actions
   setDifficulty: (difficulty: Difficulty) => void;
+  setGridSize: (gridSize: GridSize) => void;
   makeMove: (index: number) => void;
   setBoard: (board: Board) => void;
   setCurrentTurn: (player: Player) => void;
@@ -28,14 +40,24 @@ interface GameState {
   resetGame: () => void;
   startGame: () => void;
   endGame: () => void;
+  setResultSaved: (saved: boolean) => void; // New action
+  setCurrentStreak: (streak: number) => void; // New action
+  setBonusAwarded: (awarded: boolean) => void; // Track if bonus was given
+  
+  // Timer actions
+  startTurnTimer: () => void;
+  stopTurnTimer: () => void;
+  updateTimeRemaining: (time: number) => void;
+  handleTimeExpired: () => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
-  board: createEmptyBoard(),
+  board: createEmptyBoard(DEFAULT_GRID_SIZE),
   humanPlayer: "X",
   aiPlayer: "O",
   currentTurn: "X",
   difficulty: "easy",
+  gridSize: DEFAULT_GRID_SIZE,
   gameResult: null,
   winningLine: null,
   isAiThinking: false,
@@ -43,8 +65,17 @@ export const useGameStore = create<GameState>((set, get) => ({
   moves: [],
   gameStartTime: null,
   gameDuration: 0,
+  resultSaved: false, // Prevent duplicate API calls
+  currentStreak: 0, // Initial streak is 0
+  bonusAwarded: false, // Initial bonus state is false
+  
+  // Timer state
+  turnStartTime: null,
+  timeRemaining: 20,
+  isTimerActive: false,
 
   setDifficulty: (difficulty) => set({ difficulty }),
+  setGridSize: (gridSize) => set({ gridSize, board: createEmptyBoard(gridSize) }),
 
   makeMove: (index) => {
     const { board, currentTurn } = get();
@@ -61,10 +92,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   setIsAiThinking: (thinking) => set({ isAiThinking: thinking }),
   setBotMessage: (message) => set({ botMessage: message }),
   addMove: (index) => set((state) => ({ moves: [...state.moves, index] })),
+  setResultSaved: (saved) => set({ resultSaved: saved }), // New action
+  setCurrentStreak: (streak) => set({ currentStreak: streak }), // New action
+  setBonusAwarded: (awarded) => set({ bonusAwarded: awarded }), // New action
 
   resetGame: () =>
     set({
-      board: createEmptyBoard(),
+      board: createEmptyBoard(get().gridSize),
       currentTurn: "X",
       gameResult: null,
       winningLine: null,
@@ -73,6 +107,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       moves: [],
       gameStartTime: null,
       gameDuration: 0,
+      resultSaved: false, // Reset result saved flag
+      // Do NOT reset currentStreak here, it should persist across games!
+      bonusAwarded: false, // Reset bonus awarded flag for new game
+      turnStartTime: null,
+      timeRemaining: 20,
+      isTimerActive: false,
     }),
 
   startGame: () => set({ gameStartTime: Date.now() }),
@@ -81,6 +121,95 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { gameStartTime } = get();
     if (gameStartTime) {
       set({ gameDuration: Math.floor((Date.now() - gameStartTime) / 1000) });
+    }
+  },
+  
+  // Timer actions
+  startTurnTimer: () => {
+    const { difficulty } = get();
+    const config = getRuntimeConfig();
+    const turnTime = config.TURN_TIMER[difficulty.toUpperCase() as keyof typeof config.TURN_TIMER];
+    set({
+      turnStartTime: Date.now(),
+      timeRemaining: turnTime,
+      isTimerActive: true,
+    });
+  },
+  
+  stopTurnTimer: () => set({
+    turnStartTime: null,
+    isTimerActive: false,
+  }),
+  
+  updateTimeRemaining: (time) => set({ timeRemaining: time }),
+  
+  handleTimeExpired: () => {
+    const { currentTurn, humanPlayer, isAiThinking, board, aiPlayer, addMove, gridSize } = get();
+    
+    // Only handle timeout for human turn, not AI turn
+    if (currentTurn === humanPlayer && !isAiThinking) {
+      // Find a random available move for AI
+      const availableMoves = board.reduce<number[]>((moves, cell, index) => {
+        if (cell === null) moves.push(index);
+        return moves;
+      }, []);
+      
+      if (availableMoves.length > 0) {
+        // Make AI move immediately as penalty
+        const aiMoveIndex = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+        const newBoard = [...board];
+        newBoard[aiMoveIndex] = aiPlayer;
+        
+        // Add the move to history
+        addMove(aiMoveIndex);
+        
+        // Check for win/draw after penalty move
+        const result = getGameResult(newBoard, humanPlayer, gridSize);
+        const { line } = checkWinner(newBoard, gridSize);
+        
+        if (result) {
+          // Game over from penalty move
+          set({
+            board: newBoard,
+            turnStartTime: null,
+            isTimerActive: false,
+            gameResult: result,
+            winningLine: line,
+            botMessage: result === "loss" ? "⏰ Time's up! And I won!" : "⏰ Time's up! It's a draw.",
+          });
+          
+          // Also set the end time
+          const { gameStartTime } = get();
+          if (gameStartTime) {
+            set({ gameDuration: Math.floor((Date.now() - gameStartTime) / 1000) });
+          }
+        } else {
+          // Game continues
+          set({
+            board: newBoard,
+            currentTurn: humanPlayer, // Switch back to human turn
+            turnStartTime: null,
+            isTimerActive: false,
+            botMessage: "⏰ Time's up! AI took a random move!",
+          });
+        }
+      } else {
+        // No moves available, game should be over
+        set({
+          turnStartTime: null,
+          isTimerActive: false,
+          botMessage: "⏰ Time's up! But there are no moves left.",
+        });
+      }
+    } else {
+      // Bot timed out
+      set({
+        currentTurn: humanPlayer,
+        isAiThinking: false,
+        turnStartTime: null,
+        isTimerActive: false,
+        botMessage: "⏰ Bot took too long! Your turn.",
+      });
     }
   },
 }));

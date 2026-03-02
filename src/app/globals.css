@@ -74,11 +74,32 @@
   --ring: 212.7 26.8% 83.9%;
 }
 
+/* Override for purple game theme */
+.dark body {
+  background: linear-gradient(135deg, #1e1b4b 0%, #581c87 50%, #1e1b4b 100%);
+  min-height: 100vh;
+}
+
+/* Light theme purple background */
+html:not(.dark) body {
+  background: linear-gradient(135deg, #e9d5ff 0%, #c084fc 50%, #e9d5ff 100%);
+  min-height: 100vh;
+}
+
 @layer base {
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .bg-grid-white {
+    background-image: radial-gradient(circle, white 1px, transparent 1px);
+  }
+  .bg-grid-16 {
+    background-size: 16px 16px;
   }
 }

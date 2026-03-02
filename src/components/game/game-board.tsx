@@ -1,149 +1,178 @@
 "use client";
 
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useGameStore } from "@/lib/game/store";
+import { useGame } from "@/hooks/useGame";
 import { cn } from "@/lib/utils";
+import { BOARD_CONFIGS } from "@/constants";
+
+// Helper functions for winning line visualization
+function getWinningLineStyle(winningLine: number[] | null, gridSize: string): string {
+  if (!winningLine) return "w-full h-1.5";
+  
+  const gridCols = gridSize === "3x3" ? 3 : gridSize === "4x4" ? 4 : 5;
+  const firstIndex = winningLine[0];
+  const secondIndex = winningLine[1];
+  
+  // Check if horizontal (same row)
+  if (Math.floor(firstIndex / gridCols) === Math.floor(secondIndex / gridCols)) {
+    return "w-full h-1.5";
+  }
+  // Check if vertical (same column)
+  else if (firstIndex % gridCols === secondIndex % gridCols) {
+    return "w-1.5 h-full";
+  }
+  // Diagonal
+  else {
+    return "w-full h-1.5";
+  }
+}
+
+function getWinningLineTransform(winningLine: number[] | null, gridSize: string): React.CSSProperties {
+  if (!winningLine) return {};
+  
+  const gridCols = gridSize === "3x3" ? 3 : gridSize === "4x4" ? 4 : 5;
+  const firstIndex = winningLine[0];
+  const secondIndex = winningLine[1];
+  
+  // Check if horizontal (same row)
+  if (Math.floor(firstIndex / gridCols) === Math.floor(secondIndex / gridCols)) {
+    return {};
+  }
+  // Check if vertical (same column)
+  else if (firstIndex % gridCols === secondIndex % gridCols) {
+    return {};
+  }
+  // Diagonal - determine direction
+  else {
+    // Top-left to bottom-right diagonal
+    if (secondIndex - firstIndex === gridCols + 1) {
+      return { transform: 'rotate(45deg)' };
+    }
+    // Top-right to bottom-left diagonal
+    else {
+      return { transform: 'rotate(-45deg)' };
+    }
+  }
+}
 
 export function GameBoard() {
-  const { board, winningLine, isAiThinking, gameResult, humanPlayer } = useGameStore();
+  const { board, makeMove, winningLine, isAiThinking, gameResult, humanPlayer, gridSize } = useGame();
+  
+  const gridConfig = BOARD_CONFIGS[gridSize as keyof typeof BOARD_CONFIGS];
+  
+  // Use CSS Grid with dynamic columns instead of Tailwind classes
+  const gridStyle = {
+    display: 'grid',
+    gridTemplateColumns: `repeat(${gridConfig.cols}, 1fr)`,
+    gridTemplateRows: `repeat(${gridConfig.rows}, 1fr)`,
+    gap: '0.5rem',
+    width: '100%',
+    height: '100%',
+    padding: '0.5rem',
+    minHeight: '280px', // Ensure minimum height for larger grids
+  } as const;
 
-  const handleCellClick = async (index: number) => {
-    if (board[index] !== null || isAiThinking || gameResult !== null) return;
-
-    const response = await fetch("/api/game/move", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cellIndex: index }),
-    });
-
-    if (!response.ok) return;
-
-    const data = await response.json();
-    const store = useGameStore.getState();
-
-    store.addMove(index);
-    store.setBoard(data.boardAfterPlayer);
-    store.setBotMessage(data.botMessage || "");
-
-    if (data.gameResult) {
-      store.setGameResult(data.gameResult);
-      store.setWinningLine(data.winningLine);
-      store.endGame();
-      return;
-    }
-
-    // AI move
-    store.setIsAiThinking(true);
-    store.setCurrentTurn(store.aiPlayer);
-
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    store.addMove(data.aiMove);
-    store.setBoard(data.boardAfterAI);
-    store.setBotMessage(data.botMessageAfterAI || "");
-    store.setIsAiThinking(false);
-    store.setCurrentTurn(store.humanPlayer);
-
-    if (data.gameResultAfterAI) {
-      store.setGameResult(data.gameResultAfterAI);
-      store.setWinningLine(data.winningLineAfterAI);
-      store.endGame();
+  // Adjust font size based on grid size
+  const getFontSize = () => {
+    switch (gridSize) {
+      case '3x3': return 'text-3xl sm:text-4xl md:text-5xl';
+      case '4x4': return 'text-2xl sm:text-3xl md:text-4xl';
+      case '5x5': return 'text-xl sm:text-2xl md:text-3xl';
+      default: return 'text-3xl sm:text-4xl md:text-5xl';
     }
   };
 
   return (
     <div className="relative">
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full max-w-[320px] sm:max-w-[380px] mx-auto aspect-square">
+        <div 
+          style={gridStyle}
+        className="max-w-[350px] sm:max-w-[400px] mx-auto aspect-square"
+        >
         {board.map((cell, index) => {
           const isWinningCell = winningLine?.includes(index);
+          const winningLineIndex = winningLine?.indexOf(index);
+          const isWinningLineStart = winningLineIndex === 0;
+          const isWinningLineEnd = winningLineIndex === winningLine?.length! - 1;
 
           return (
             <motion.button
               key={index}
               className={cn(
-                "relative flex items-center justify-center rounded-xl border-2 bg-card text-card-foreground",
-                "text-3xl sm:text-4xl md:text-5xl font-bold",
-                "transition-colors duration-200",
+                "relative flex items-center justify-center rounded-xl border-2 shadow-sm",
+                "transition-all duration-300",
+                "aspect-square",
+                getFontSize(),
+                "font-bold",
+                // Enhanced dark mode support - keep card theme but improve contrast
+                "bg-white/95 dark:bg-gray-900/95",
+                "border-gray-300/70 dark:border-gray-700/70",
+                "text-gray-900 dark:text-gray-100",
+                "backdrop-blur-sm",
+                // Add subtle shadow for depth
+                "shadow-md hover:shadow-xl",
+                // Add subtle glow in dark mode
+                "dark:shadow-gray-900/50 dark:hover:shadow-blue-900/20",
                 cell === null && !isAiThinking && !gameResult
-                  ? "hover:bg-accent hover:border-primary/50 cursor-pointer"
+                  ? "hover:bg-blue-50/95 dark:hover:bg-blue-900/95 hover:border-blue-400/90 dark:hover:border-blue-600/90 hover:shadow-lg cursor-pointer hover:scale-105 dark:hover:shadow-blue-900/30"
                   : "cursor-default",
-                isWinningCell && "border-primary bg-primary/10",
-                !isWinningCell && "border-border"
+                isWinningCell && "border-green-500 bg-green-100/95 dark:bg-green-900/95 text-green-900 dark:text-green-100 shadow-lg dark:shadow-green-900/30",
+                !isWinningCell && !cell && "bg-white/90 dark:bg-gray-800/90"
               )}
-              onClick={() => handleCellClick(index)}
+              onClick={() => makeMove(index)}
               whileHover={
                 cell === null && !isAiThinking && !gameResult
-                  ? { scale: 1.05 }
+                  ? { scale: 1.05, y: -2 }
                   : {}
               }
               whileTap={
                 cell === null && !isAiThinking && !gameResult
-                  ? { scale: 0.95 }
+                  ? { scale: 0.95, y: 0 }
                   : {}
               }
             >
-              <AnimatePresence mode="wait">
+              <AnimatePresence>
                 {cell && (
                   <motion.span
                     key={`${index}-${cell}`}
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    exit={{ scale: 0, rotate: 180 }}
+                    initial={{ scale: 0, rotate: -180, opacity: 0 }}
+                    animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                    exit={{ scale: 0, rotate: 180, opacity: 0 }}
                     transition={{ type: "spring", stiffness: 260, damping: 20 }}
                     className={cn(
-                      cell === humanPlayer ? "text-blue-500" : "text-red-500",
-                      isWinningCell && "drop-shadow-lg"
+                      "select-none",
+                      cell === "X" && "text-blue-600 dark:text-blue-400 font-extrabold",
+                      cell === "O" && "text-red-600 dark:text-red-400 font-extrabold",
+                      isWinningCell && "drop-shadow-lg scale-110"
                     )}
                   >
                     {cell}
                   </motion.span>
                 )}
               </AnimatePresence>
+              
+              {isWinningCell && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                >
+                  <div 
+                    className={cn(
+                      "bg-gradient-to-r from-green-400 to-green-600 rounded-full shadow-lg",
+                      getWinningLineStyle(winningLine, gridSize)
+                    )}
+                    style={getWinningLineTransform(winningLine, gridSize)}
+                  />
+                </motion.div>
+              )}
             </motion.button>
           );
         })}
       </div>
-
-      {/* Winning line overlay */}
-      <AnimatePresence>
-        {winningLine && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute inset-0 pointer-events-none"
-          >
-            <WinLine cells={winningLine} />
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
 
-function WinLine({ cells }: { cells: number[] }) {
-  const getLineStyle = (cells: number[]): React.CSSProperties => {
-    const positions: Record<string, React.CSSProperties> = {
-      "0,1,2": { top: "16.6%", left: "5%", width: "90%", height: "3px", transform: "translateY(-50%)" },
-      "3,4,5": { top: "50%", left: "5%", width: "90%", height: "3px", transform: "translateY(-50%)" },
-      "6,7,8": { top: "83.3%", left: "5%", width: "90%", height: "3px", transform: "translateY(-50%)" },
-      "0,3,6": { top: "5%", left: "16.6%", width: "3px", height: "90%", transform: "translateX(-50%)" },
-      "1,4,7": { top: "5%", left: "50%", width: "3px", height: "90%", transform: "translateX(-50%)" },
-      "2,5,8": { top: "5%", left: "83.3%", width: "3px", height: "90%", transform: "translateX(-50%)" },
-      "0,4,8": { top: "5%", left: "5%", width: "127%", height: "3px", transform: "rotate(45deg)", transformOrigin: "top left" },
-      "2,4,6": { top: "5%", right: "5%", width: "127%", height: "3px", transform: "rotate(-45deg)", transformOrigin: "top right" },
-    };
-
-    const key = cells.join(",");
-    return positions[key] || {};
-  };
-
-  return (
-    <motion.div
-      className="absolute bg-primary rounded-full"
-      style={getLineStyle(cells)}
-      initial={{ scaleX: 0 }}
-      animate={{ scaleX: 1 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-    />
-  );
-}

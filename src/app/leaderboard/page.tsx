@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useTransition, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Trophy, Medal, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLeaderboard } from "@/hooks/useLeaderboard";
+import { PageLoading } from "@/components/ui/page-loading";
+import { PageTransition } from "@/components/ui/navigation-loading";
 
 interface LeaderboardUser {
   id: string;
@@ -33,28 +36,17 @@ interface LeaderboardData {
 
 export default function LeaderboardPage() {
   const { data: session, status } = useSession();
-  const [data, setData] = useState<LeaderboardData | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
 
-  const fetchLeaderboard = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ page: String(page), limit: "20" });
-      if (search) params.set("search", search);
-      const res = await fetch(`/api/leaderboard?${params}`);
-      if (res.ok) setData(await res.json());
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search]);
+  // 2026 Standard: ใช้ useTransition สำหรับ non-urgent navigation
+  const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    fetchLeaderboard();
-    const interval = setInterval(fetchLeaderboard, 30000);
-    return () => clearInterval(interval);
-  }, [fetchLeaderboard]);
+  const { data, isLoading, error } = useLeaderboard({ page, limit: 20, search }) as {
+  data: LeaderboardData | null;
+  isLoading: boolean;
+  error: unknown;
+};
 
   if (status === "loading") {
     return (
@@ -66,6 +58,10 @@ export default function LeaderboardPage() {
 
   if (!session) redirect("/login");
 
+  if (isLoading && !data) {
+    return <PageLoading />;
+  }
+
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Trophy className="h-5 w-5 text-yellow-500" />;
     if (rank === 2) return <Medal className="h-5 w-5 text-gray-400" />;
@@ -74,8 +70,9 @@ export default function LeaderboardPage() {
   };
 
   return (
-    <div className="container max-w-2xl mx-auto px-4 py-6 sm:py-10 space-y-6">
-      <h1 className="text-2xl sm:text-3xl font-bold text-center">Leaderboard</h1>
+    <PageTransition isPending={isPending}>
+      <div className="container max-w-2xl mx-auto px-4 py-6 sm:py-10 space-y-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-center">Leaderboard</h1>
 
       {/* Search */}
       <div className="relative">
@@ -84,7 +81,7 @@ export default function LeaderboardPage() {
           type="text"
           placeholder="Search players..."
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          onChange={(e) => startTransition(() => { setSearch(e.target.value); setPage(1); })}
           className="w-full rounded-lg border bg-background px-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
@@ -95,7 +92,7 @@ export default function LeaderboardPage() {
           <CardTitle className="text-lg">Rankings</CardTitle>
         </CardHeader>
         <CardContent className="space-y-1">
-          {loading && !data ? (
+          {isLoading || !data ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
             </div>
@@ -147,24 +144,23 @@ export default function LeaderboardPage() {
           <Button
             variant="outline"
             size="icon"
-            disabled={page === 1}
-            onClick={() => setPage((p) => p - 1)}
+            disabled={page === 1 || isPending}
+            onClick={() => startTransition(() => setPage((p) => p - 1))}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {data.pagination.totalPages}
-          </span>
+          <span className="text-sm text-muted-foreground">Page {page} of {data.pagination.totalPages}</span>
           <Button
             variant="outline"
             size="icon"
-            disabled={page === data.pagination.totalPages}
-            onClick={() => setPage((p) => p + 1)}
+            disabled={page === data.pagination.totalPages || isPending}
+            onClick={() => startTransition(() => setPage((p) => p + 1))}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       )}
-    </div>
+      </div>
+    </PageTransition>
   );
 }

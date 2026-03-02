@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useTransition } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trophy, Frown, Minus, ChevronLeft, ChevronRight, Clock, Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useGameHistory } from "@/hooks/useGameHistory";
+import { PageLoading } from "@/components/ui/page-loading";
+import { PageTransition } from "@/components/ui/navigation-loading";
 
 interface GameRecord {
   id: string;
@@ -17,30 +20,24 @@ interface GameRecord {
   createdAt: string;
 }
 
+interface HistoryResponse {
+  games: GameRecord[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 export default function HistoryPage() {
   const { data: session, status } = useSession();
-  const [games, setGames] = useState<GameRecord[]>([]);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
-
-  const fetchHistory = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/game/history?page=${page}&limit=10`);
-      if (res.ok) {
-        const data = await res.json();
-        setGames(data.games);
-        setTotalPages(data.pagination.totalPages);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [page]);
-
-  useEffect(() => {
-    fetchHistory();
-  }, [fetchHistory]);
+  
+  // 2026 Standard: ใช้ useTransition สำหรับ non-urgent navigation
+  const [isPending, startTransition] = useTransition();
+  
+  const { data, isLoading } = useGameHistory({ page, limit: 10 }) as { data: HistoryResponse | undefined, isLoading: boolean };
 
   if (status === "loading") {
     return (
@@ -52,8 +49,18 @@ export default function HistoryPage() {
 
   if (!session) redirect("/login");
 
+  if (isLoading && !data) {
+    return <PageLoading />;
+  }
+
+  const games: GameRecord[] = data?.games || [];
+  const totalPages = data?.pagination?.totalPages || 1;
+
   const getResultDisplay = (result: string) => {
-    switch (result) {
+    // Convert uppercase DB values to lowercase for comparison
+    const normalizedResult = result.toLowerCase();
+    
+    switch (normalizedResult) {
       case "win":
         return { icon: <Trophy className="h-4 w-4 text-green-500" />, text: "Win", color: "text-green-500", bg: "bg-green-500/10" };
       case "loss":
@@ -64,15 +71,16 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="container max-w-2xl mx-auto px-4 py-6 sm:py-10 space-y-6">
-      <h1 className="text-2xl sm:text-3xl font-bold text-center">Match History</h1>
+    <PageTransition isPending={isPending}>
+      <div className="container max-w-2xl mx-auto px-4 py-6 sm:py-10 space-y-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-center">Match History</h1>
 
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Recent Games</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {loading && games.length === 0 ? (
+          {isLoading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
             </div>
@@ -123,15 +131,26 @@ export default function HistoryPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" size="icon" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            disabled={page === 1 || isPending} 
+            onClick={() => startTransition(() => setPage((p) => Math.max(1, p - 1)))}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
-          <Button variant="outline" size="icon" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            disabled={page >= totalPages || isPending} 
+            onClick={() => startTransition(() => setPage((p) => Math.min(totalPages, p + 1)))}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       )}
-    </div>
+      </div>
+    </PageTransition>
   );
 }
