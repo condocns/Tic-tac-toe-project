@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
+import { historyQuerySchema } from "@/lib/validations";
+import { Prisma } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.AUTH_SECRET });
@@ -8,11 +10,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { searchParams } = new URL(req.url);
-  const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "10")));
-
   try {
+    // Input Validation using centralized Zod schema
+    const { searchParams } = new URL(req.url);
+    const queryParams = Object.fromEntries(searchParams.entries());
+    
+    const validationResult = historyQuerySchema.safeParse(queryParams);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: "Invalid query parameters", details: validationResult.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const { page, limit } = validationResult.data;
+
     const tokenEmail = typeof token.email === "string" ? token.email : undefined;
     
     // Find actual user ID (handles provider ID vs database CUID mismatch)
@@ -51,7 +63,13 @@ export async function GET(req: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("[History API Error]:", error);
+    
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      return NextResponse.json({ error: "Database operation failed" }, { status: 400 });
+    }
+    
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

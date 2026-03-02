@@ -4,9 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { rateLimiters } from "@/lib/rate-limit";
 import { logSecurityEvent } from "@/lib/security-logger";
 import { getClientIP } from "@/lib/utils";
+import { adminQuerySchema } from "@/lib/validations";
+import { Prisma } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
-  // Rate limiting
+  // 1. Rate limiting
   const clientIP = getClientIP(req);
   const rateLimiter = rateLimiters.admin;
   const { success, limit, remaining, reset } = await rateLimiter.limit(clientIP);
@@ -31,57 +33,84 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
-  if (!token?.sub) {
-    logSecurityEvent.unauthorizedAccess(req, { endpoint: "/api/admin/players" });
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // RBAC: only admin can access
-  const tokenEmail = typeof token.email === "string" ? token.email : undefined;
-  
-  // Find actual user ID (handles provider ID vs database CUID mismatch)
-  const user = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { id: token.sub },
-        ...(tokenEmail ? [{ email: tokenEmail }] : []),
-      ],
-    },
-    select: { role: true },
-  });
-
-  if (user?.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const { searchParams } = new URL(req.url);
-  const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-  const limitCount = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
-  const search = searchParams.get("search") || "";
-  const sortBy = searchParams.get("sortBy") || "score";
-  const order = searchParams.get("order") === "asc" ? "asc" : "desc";
-
   try {
-    const where = search
-      ? {
-          OR: [
-            { name: { contains: search, mode: "insensitive" as const } },
-            { email: { contains: search, mode: "insensitive" as const } },
-          ],
-        }
-      : {};
-
-    const orderBy: Record<string, "asc" | "desc"> = {};
-    if (["score", "wins", "losses", "gamesPlayed", "createdAt"].includes(sortBy)) {
-      orderBy[sortBy] = order;
-    } else {
-      orderBy.score = "desc";
+    // 2. Authentication
+    const token = await getToken({ req, secret: process.env.AUTH_SECRET });
+    if (!token?.sub) {
+      logSecurityEvent.unauthorizedAccess(req, { endpoint: "/api/admin/players" });
+      return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
     }
 
-    const [players, total] = await Promise.all([
+    // 3. RBAC (Role-Based Access Control)
+    const tokenEmail = typeof token.email === "string" ? token.email : undefined;
+    
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: token.sub },
+          ...(tokenEmail ? [{ email: tokenEmail }] : []),
+        ],
+      },
+      select: { role: true },
+    });
+
+    if (user?.role !== "admin") {
+      logSecurityEvent.unauthorizedAccess(req, { 
+        endpoint: "/api/admin/players", 
+        userId: token.sub,
+        reason: "Insufficient permissions" 
+      });
+      return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+    }
+
+    // 4. Input Validation
+    const { searchParams } = new URL(req.url);
+    const queryParams = Object.fromEntries(searchParams.entries());
+    
+    const validationResult = adminQuerySchema.safeParse(queryParams);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: "Invalid query parameters", details: validationResult.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const { page, limit: limitCount, search, adminOnly, sortBy, order } = validationResult.data;
+
+    // 5. Build Type-Safe Query Options
+    const whereCondition: Prisma.UserWhereInput = {};
+    
+    // Handle role filter
+    if (adminOnly === "true") {
+      whereCondition.role = "admin";
+    }
+    
+    // Handle search text
+    if (search) {
+      const searchFilter: Prisma.UserWhereInput = {
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+        ],
+      };
+      
+      if (adminOnly === "true") {
+        whereCondition.AND = [searchFilter];
+      } else {
+        // If no adminOnly filter, just use the search filter directly
+        Object.assign(whereCondition, searchFilter);
+      }
+    }
+
+    // Type-safe ordering
+    const orderBy: Prisma.UserOrderByWithRelationInput = {
+      [sortBy]: order
+    };
+
+    // 6. Database Operations (Concurrent)
+    const [players, total, stats] = await Promise.all([
       prisma.user.findMany({
-        where,
+        where: whereCondition,
         select: {
           id: true,
           name: true,
@@ -101,26 +130,45 @@ export async function GET(req: NextRequest) {
         skip: (page - 1) * limitCount,
         take: limitCount,
       }),
-      prisma.user.count({ where }),
+      prisma.user.count({ where: whereCondition }),
+      prisma.user.aggregate({
+        _sum: { gamesPlayed: true },
+        _count: true,
+        _avg: { score: true },
+      })
     ]);
 
-    // Aggregate stats
-    const stats = await prisma.user.aggregate({
-      _sum: { gamesPlayed: true },
-      _count: true,
-      _avg: { score: true },
-    });
-
+    // 7. Structured Response
     return NextResponse.json({
       players,
-      pagination: { page, limit: limitCount, total, totalPages: Math.ceil(total / limitCount) },
+      pagination: { 
+        page, 
+        limit: limitCount, 
+        total, 
+        totalPages: Math.ceil(total / limitCount) 
+      },
       stats: {
         totalPlayers: stats._count,
         totalGamesPlayed: stats._sum.gamesPlayed ?? 0,
         averageScore: Math.round((stats._avg.score ?? 0) * 100) / 100,
       },
     });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+
+  } catch (error) {
+    // 8. Robust Error Handling
+    console.error("[Admin API Error]:", error);
+    
+    // Check if it's a Prisma error
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      return NextResponse.json(
+        { error: "Database operation failed" }, 
+        { status: 400 }
+      );
+    }
+    
+    return NextResponse.json(
+      { error: "Internal server error" }, 
+      { status: 500 }
+    );
   }
 }

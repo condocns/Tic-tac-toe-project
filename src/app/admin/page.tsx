@@ -37,6 +37,7 @@ export default function AdminPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isAdminOnly, setIsAdminOnly] = useState(false);
   const [sortBy, setSortBy] = useState("score");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [loading, setLoading] = useState(true);
@@ -62,6 +63,7 @@ export default function AdminPage() {
         order,
       });
       if (searchQuery) params.set("search", searchQuery);
+      if (isAdminOnly) params.set("adminOnly", "true");
       const res = await fetch(`/api/admin/players?${params}`);
       if (res.status === 403) {
         setError("Access denied. Admin role required.");
@@ -71,7 +73,7 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchQuery, sortBy, order]);
+  }, [page, searchQuery, sortBy, order, isAdminOnly]);
 
   useEffect(() => {
     fetchPlayers();
@@ -148,15 +150,26 @@ export default function AdminPage() {
       )}
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Search by name or email..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="w-full rounded-lg border bg-background px-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="w-full rounded-lg border bg-background px-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <Button
+          variant={isAdminOnly ? "default" : "outline"}
+          size="sm"
+          onClick={() => setIsAdminOnly(!isAdminOnly)}
+          className="whitespace-nowrap"
+        >
+          <Shield className="h-4 w-4 mr-1" />
+          Admins Only
+        </Button>
       </div>
 
       {/* Players table */}
