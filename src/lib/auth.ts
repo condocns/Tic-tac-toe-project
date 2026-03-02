@@ -4,6 +4,7 @@ import GitHub from "next-auth/providers/github";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { isAdminEmail } from "@/lib/utils";
+import { getRequiredEnv } from "@/lib/env";
 import { UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { isSessionBlacklistedSafe } from "@/lib/session-blacklist";
@@ -11,14 +12,14 @@ import { isSessionBlacklistedSafe } from "@/lib/session-blacklist";
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Google({
-      clientId: process.env.AUTH_GOOGLE_ID!,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
-      allowDangerousEmailAccountLinking: true, // implement later for email verification
+      clientId: getRequiredEnv("AUTH_GOOGLE_ID"),
+      clientSecret: getRequiredEnv("AUTH_GOOGLE_SECRET"),
+      allowDangerousEmailAccountLinking: false,
     }),
     GitHub({
-      clientId: process.env.AUTH_GITHUB_ID!,
-      clientSecret: process.env.AUTH_GITHUB_SECRET!,
-      allowDangerousEmailAccountLinking: true, // implement later for email verification
+      clientId: getRequiredEnv("AUTH_GITHUB_ID"),
+      clientSecret: getRequiredEnv("AUTH_GITHUB_SECRET"),
+      allowDangerousEmailAccountLinking: false,
     }),
     Credentials({
       name: "Credentials",

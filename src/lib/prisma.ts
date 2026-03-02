@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { getRequiredEnv } from "@/lib/env";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -9,7 +10,7 @@ export const prisma =
   new PrismaClient({
     datasources: {
       db: {
-        url: process.env.DATABASE_URL,
+        url: getRequiredEnv("DATABASE_URL"),
       },
     },
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],

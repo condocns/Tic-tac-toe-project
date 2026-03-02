@@ -15,7 +15,10 @@ interface GameResultRequest {
 }
 
 export async function POST(req: NextRequest) {
-  console.log("🎯 POST /api/game/result called");
+  const isDev = process.env.NODE_ENV === "development";
+  if (isDev) {
+    console.log("🎯 POST /api/game/result called");
+  }
   
   // Rate limiting
   const clientIP = getClientIP(req);
@@ -44,7 +47,9 @@ export async function POST(req: NextRequest) {
 
   const token = await getToken({ req, secret: process.env.AUTH_SECRET });
   if (!token?.sub) {
-    console.log("❌ Unauthorized - no token");
+    if (isDev) {
+      console.log("❌ Unauthorized - no token");
+    }
     logSecurityEvent.unauthorizedAccess(req, { endpoint: "/api/game/result" });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -55,7 +60,9 @@ export async function POST(req: NextRequest) {
     // Validate input using Zod
     const validationResult = gameResultSchema.safeParse(body);
     if (!validationResult.success) {
-      console.log("❌ Invalid request body:", validationResult.error.format());
+      if (isDev) {
+        console.log("❌ Invalid request body:", validationResult.error.format());
+      }
       return NextResponse.json(
         { error: "Invalid request data", details: validationResult.error.format() }, 
         { status: 400 }
@@ -65,7 +72,9 @@ export async function POST(req: NextRequest) {
     const { result, difficulty, moves, duration } = validationResult.data;
     const tokenEmail = typeof token.email === "string" ? token.email : undefined;
     
-    console.log("📊 Request data:", { result, difficulty, moves, duration, userId: token.sub });
+    if (isDev) {
+      console.log("📊 Request data:", { result, difficulty, moves, duration, userId: token.sub });
+    }
 
     // Calculate score change and streak in a single transaction
     const updatedUser = await prisma.$transaction(async (tx) => {
@@ -78,12 +87,14 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      console.log("👤 Current user data:", { 
-        score: user.score, 
-        currentStreak: user.currentStreak, 
-        wins: user.wins,
-        losses: user.losses 
-      });
+      if (isDev) {
+        console.log("👤 Current user data:", { 
+          score: user.score, 
+          currentStreak: user.currentStreak, 
+          wins: user.wins,
+          losses: user.losses 
+        });
+      }
 
       let scoreChange = 0;
       let newStreak = user.currentStreak;
@@ -107,7 +118,9 @@ export async function POST(req: NextRequest) {
         // Draw - no score change, no streak change
       }
 
-      console.log("🎮 Score calculation:", { result, scoreChange, bonusPoints, newStreak });
+      if (isDev) {
+        console.log("🎮 Score calculation:", { result, scoreChange, bonusPoints, newStreak });
+      }
 
       // Save game record
       await tx.game.create({
@@ -137,12 +150,14 @@ export async function POST(req: NextRequest) {
       return { ...updated, scoreChange, bonusAwarded: bonusPoints > 0 };
     });
 
-    console.log("✅ Transaction successful:", { 
-      newScore: updatedUser.score, 
-      newStreak: updatedUser.currentStreak,
-      scoreChange: updatedUser.scoreChange,
-      bonusAwarded: updatedUser.bonusAwarded
-    });
+    if (isDev) {
+      console.log("✅ Transaction successful:", { 
+        newScore: updatedUser.score, 
+        newStreak: updatedUser.currentStreak,
+        scoreChange: updatedUser.scoreChange,
+        bonusAwarded: updatedUser.bonusAwarded
+      });
+    }
 
     // Clear leaderboard cache to show updated scores immediately
     if (redis) {
@@ -151,7 +166,9 @@ export async function POST(req: NextRequest) {
         const keys = await redis.keys(pattern);
         if (keys.length > 0) {
           await redis.del(...keys);
-          console.log("🗑️ Cleared leaderboard cache keys:", keys.length);
+          if (isDev) {
+            console.log("🗑️ Cleared leaderboard cache keys:", keys.length);
+          }
         }
       } catch (error) {
         console.error("❌ Failed to clear leaderboard cache:", error);
