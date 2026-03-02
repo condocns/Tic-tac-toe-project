@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { RotateCcw, Play, Grid3x3, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getBotMessage } from "@/lib/game/bot-messages";
-import { DIFFICULTY_GRID_CONFIGS, type GridSize } from "@/constants";
+import { DIFFICULTY_GRID_CONFIGS, type GridSize, DEFAULT_GRID_SIZE } from "@/constants";
 
 export function GameControls() {
   const { difficulty, setDifficulty, gridSize, setGridSize, resetGame, gameResult, setBotMessage, startGame } =
@@ -31,6 +31,7 @@ export function GameControls() {
 
   const handleDifficultyChange = (diff: "easy" | "medium" | "hard") => {
     setDifficulty(diff);
+    setGridSize(DEFAULT_GRID_SIZE);
     handleNewGame();
   };
 
