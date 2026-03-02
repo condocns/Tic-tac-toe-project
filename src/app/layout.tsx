@@ -37,10 +37,10 @@ export default function RootLayout({
                     key={i}
                     className="absolute bg-white rounded-full opacity-5"
                     style={{
-                      width: Math.random() * 3 + 1 + 'px',
-                      height: Math.random() * 3 + 1 + 'px',
-                      left: Math.random() * 100 + '%',
-                      top: Math.random() * 100 + '%',
+                      width: `${(i % 3) + 1}px`,
+                      height: `${((i * 2) % 3) + 1}px`,
+                      left: `${(i * 13) % 100}%`,
+                      top: `${(i * 29) % 100}%`,
                     }}
                   />
                 ))}

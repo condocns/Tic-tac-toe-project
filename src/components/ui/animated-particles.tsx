@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 interface AnimatedParticlesProps {
   count?: number;
@@ -9,34 +9,19 @@ interface AnimatedParticlesProps {
 }
 
 export function AnimatedParticles({ count = 15, className = "" }: AnimatedParticlesProps) {
-  const [particles, setParticles] = useState<Array<{
-    id: number;
-    width: number;
-    height: number;
-    left: number;
-    top: number;
-    duration: number;
-    delay: number;
-  }>>([]);
-
-  // 2026 Standard: Generate particles only on client after mount
-  useEffect(() => {
-    const newParticles = Array.from({ length: count }, (_, i) => ({
-      id: i,
-      width: Math.random() * 3 + 1,
-      height: Math.random() * 3 + 1,
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      duration: Math.random() * 3 + 2,
-      delay: Math.random() * 2,
-    }));
-    setParticles(newParticles);
-  }, [count]);
-
-  // Don't render on server to prevent hydration mismatch
-  if (particles.length === 0) {
-    return <div className={`absolute inset-0 ${className}`} />;
-  }
+  const particles = useMemo(
+    () =>
+      Array.from({ length: count }, (_, i) => ({
+        id: i,
+        width: (i % 3) + 1,
+        height: ((i * 2) % 3) + 1,
+        left: (i * 13) % 100,
+        top: (i * 29) % 100,
+        duration: ((i % 3) + 2),
+        delay: (i % 4) * 0.5,
+      })),
+    [count]
+  );
 
   return (
     <div className={`absolute inset-0 ${className}`}>

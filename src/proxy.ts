@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { UserRole } from "@prisma/client";
+import { getRequiredEnv } from "@/lib/env";
 
 export default async function proxy(req: NextRequest) {
   const isPublicRoute = ["/", "/login", "/api/health"].some(route => 
@@ -12,7 +13,7 @@ export default async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
+  const token = await getToken({ req, secret: getRequiredEnv("AUTH_SECRET") });
   const isLoggedIn = !!token;
   
   if (!isLoggedIn) {

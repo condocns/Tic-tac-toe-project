@@ -6,13 +6,7 @@ import { logSecurityEvent } from "@/lib/security-logger";
 import { getClientIP } from "@/lib/utils";
 import { redis } from "@/lib/redis";
 import { gameResultSchema } from "@/lib/validations";
-
-interface GameResultRequest {
-  result: "win" | "loss" | "draw";
-  difficulty: "easy" | "medium" | "hard";
-  moves: number[];
-  duration: number;
-}
+import { getRequiredEnv } from "@/lib/env";
 
 export async function POST(req: NextRequest) {
   const isDev = process.env.NODE_ENV === "development";
@@ -45,7 +39,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
+  const token = await getToken({ req, secret: getRequiredEnv("AUTH_SECRET") });
   if (!token?.sub) {
     if (isDev) {
       console.log("❌ Unauthorized - no token");

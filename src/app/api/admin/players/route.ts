@@ -5,6 +5,7 @@ import { rateLimiters } from "@/lib/rate-limit";
 import { logSecurityEvent } from "@/lib/security-logger";
 import { getClientIP } from "@/lib/utils";
 import { adminQuerySchema } from "@/lib/validations";
+import { getRequiredEnv } from "@/lib/env";
 import { Prisma, UserRole } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // 2. Authentication
-    const token = await getToken({ req, secret: process.env.AUTH_SECRET });
+    const token = await getToken({ req, secret: getRequiredEnv("AUTH_SECRET") });
     if (!token?.sub) {
       logSecurityEvent.unauthorizedAccess(req, { endpoint: "/api/admin/players" });
       return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });

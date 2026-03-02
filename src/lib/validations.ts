@@ -20,6 +20,20 @@ export const historyQuerySchema = paginationSchema.extend({
   limit: z.coerce.number().min(1).max(50).default(10), // Specific limit for history
 });
 
+export const gameMoveSchema = z
+  .object({
+    cellIndex: z.number().int().min(0).max(24),
+    board: z.array(z.enum(["X", "O"]).nullable()).max(25).optional(),
+    difficulty: z.enum(["easy", "medium", "hard"]).optional().default("easy"),
+    humanPlayer: z.enum(["X", "O"]).optional().default("X"),
+    aiPlayer: z.enum(["X", "O"]).optional().default("O"),
+    gridSize: z.enum(["3x3", "4x4", "5x5"]).optional().default("3x3"),
+  })
+  .refine((payload) => payload.humanPlayer !== payload.aiPlayer, {
+    message: "Players must use different symbols",
+    path: ["aiPlayer"],
+  });
+
 // Leaderboard query schema (extends pagination)
 export const leaderboardQuerySchema = paginationSchema.extend({
   limit: z.coerce.number().min(1).max(50).default(20),

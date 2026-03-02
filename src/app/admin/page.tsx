@@ -107,16 +107,6 @@ export default function AdminPage() {
     fetchPlayers();
   }, [fetchPlayers]);
 
-  if (status === "loading") {
-    return (
-      <div className="flex items-center justify-center min-h-[80vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
-
-  if (!session) redirect("/login");
-
   const toggleSort = (field: string) => {
     startTransition(() => {
       if (sortBy === field) {
@@ -150,6 +140,16 @@ export default function AdminPage() {
     window.addEventListener("adminPlayersInvalidate", handleInvalidate);
     return () => window.removeEventListener("adminPlayersInvalidate", handleInvalidate);
   }, [clearCache, fetchPlayers]);
+
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-[80vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!session) redirect("/login");
 
   if (loading && !data) {
     return <PageLoading />;

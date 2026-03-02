@@ -320,7 +320,6 @@ export function useGame() {
       humanPlayer,
       aiPlayer,
       difficulty,
-      gridSize,
       isAiThinking,
       gameResult,
       addMove,
@@ -332,7 +331,9 @@ export function useGame() {
       setBotMessage,
       endGame,
       stopTurnTimer,
+      startTurnTimer,
       saveGameResult,
+      moveMutation,
     ]
   );
 

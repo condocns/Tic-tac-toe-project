@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimiters } from "@/lib/rate-limit";
 import { logSecurityEvent } from "@/lib/security-logger";
 import { getClientIP } from "@/lib/utils";
+import { getRequiredEnv } from "@/lib/env";
 
 export async function GET(req: NextRequest) {
   const clientIP = getClientIP(req);
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
+  const token = await getToken({ req, secret: getRequiredEnv("AUTH_SECRET") });
   if (!token?.sub) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

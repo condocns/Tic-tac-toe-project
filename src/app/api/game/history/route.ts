@@ -3,10 +3,33 @@ import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 import { historyQuerySchema } from "@/lib/validations";
 import { Prisma } from "@prisma/client";
+import { rateLimiters } from "@/lib/rate-limit";
+import { logSecurityEvent } from "@/lib/security-logger";
+import { getClientIP } from "@/lib/utils";
+import { getRequiredEnv } from "@/lib/env";
 
 export async function GET(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
+  const clientIP = getClientIP(req);
+  const { success, limit, remaining, reset } = await rateLimiters.general.limit(clientIP);
+
+  if (!success) {
+    logSecurityEvent.rateLimitExceeded(req, { endpoint: "/api/game/history", limit, remaining, reset });
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Limit": limit.toString(),
+          "X-RateLimit-Remaining": remaining.toString(),
+          "X-RateLimit-Reset": reset.toString(),
+        },
+      }
+    );
+  }
+
+  const token = await getToken({ req, secret: getRequiredEnv("AUTH_SECRET") });
   if (!token?.sub) {
+    logSecurityEvent.unauthorizedAccess(req, { endpoint: "/api/game/history" });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

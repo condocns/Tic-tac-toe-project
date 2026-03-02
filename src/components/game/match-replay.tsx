@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, RotateCcw, SkipForward } from "lucide-react";
@@ -15,8 +15,6 @@ interface MatchReplayProps {
 export function MatchReplay({ moves, onClose }: MatchReplayProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [board, setBoard] = useState<Board>(Array(9).fill(null));
-  const [winLine, setWinLine] = useState<number[] | null>(null);
 
   const buildBoard = useCallback(
     (step: number): Board => {
@@ -29,16 +27,11 @@ export function MatchReplay({ moves, onClose }: MatchReplayProps) {
     [moves]
   );
 
-  useEffect(() => {
-    const newBoard = buildBoard(currentStep);
-    setBoard(newBoard);
-    const { line } = checkWinner(newBoard);
-    setWinLine(line);
-  }, [currentStep, buildBoard]);
+  const board = useMemo(() => buildBoard(currentStep), [buildBoard, currentStep]);
+  const winLine = useMemo(() => checkWinner(board).line, [board]);
 
   useEffect(() => {
     if (!isPlaying || currentStep >= moves.length) {
-      setIsPlaying(false);
       return;
     }
     const timer = setTimeout(() => setCurrentStep((s) => s + 1), 600);
@@ -48,7 +41,6 @@ export function MatchReplay({ moves, onClose }: MatchReplayProps) {
   const reset = () => {
     setCurrentStep(0);
     setIsPlaying(false);
-    setWinLine(null);
   };
 
   const skipToEnd = () => {
@@ -101,7 +93,7 @@ export function MatchReplay({ moves, onClose }: MatchReplayProps) {
           disabled={currentStep >= moves.length}
           className="h-8 w-8"
         >
-          {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+          {isPlaying && currentStep < moves.length ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
         </Button>
         <Button variant="outline" size="icon" onClick={skipToEnd} className="h-8 w-8">
           <SkipForward className="h-3.5 w-3.5" />
