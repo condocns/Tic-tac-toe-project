@@ -1,15 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
+import { rateLimiters } from "@/lib/rate-limit";
+import { logSecurityEvent } from "@/lib/security-logger";
+import { getClientIP } from "@/lib/utils";
+import { leaderboardQuerySchema } from "@/lib/validations";
 
 const CACHE_KEY = "leaderboard";
 const CACHE_TTL = 10; // 10 seconds - faster updates
 
 export async function GET(req: NextRequest) {
+  const clientIP = getClientIP(req);
+  const rateLimiter = rateLimiters.general;
+  const { success, limit: rateLimit, remaining, reset } = await rateLimiter.limit(clientIP);
+
+  if (!success) {
+    logSecurityEvent.rateLimitExceeded(req, { endpoint: "/api/leaderboard", limit: rateLimit, remaining, reset });
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Limit": rateLimit.toString(),
+          "X-RateLimit-Remaining": remaining.toString(),
+          "X-RateLimit-Reset": reset.toString(),
+        },
+      }
+    );
+  }
+
   const { searchParams } = new URL(req.url);
-  const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20")));
-  const search = searchParams.get("search") || "";
+  const queryParams = Object.fromEntries(searchParams.entries());
+  const validationResult = leaderboardQuerySchema.safeParse(queryParams);
+  if (!validationResult.success) {
+    return NextResponse.json(
+      { error: "Invalid query parameters", details: validationResult.error.format() },
+      { status: 400 }
+    );
+  }
+
+  const { page, limit, search } = validationResult.data;
 
   try {
     const cacheKey = `${CACHE_KEY}:${page}:${limit}:${search}`;
@@ -17,7 +47,12 @@ export async function GET(req: NextRequest) {
     // Try cache first (only if Redis is configured)
     const cached = redis ? await redis.get(cacheKey).catch(() => null) : null;
     if (cached) {
-      return NextResponse.json(cached);
+      try {
+        const parsed = typeof cached === "string" ? JSON.parse(cached) : cached;
+        return NextResponse.json(parsed);
+      } catch {
+        // Ignore cache parse errors and fall back to DB
+      }
     }
 
     const where = search

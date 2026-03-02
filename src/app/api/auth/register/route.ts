@@ -3,18 +3,27 @@ import { prisma } from "@/lib/prisma";
 import { registerSchema } from "@/lib/validations";
 import bcrypt from "bcryptjs";
 import { rateLimiters } from "@/lib/rate-limit";
+import { logSecurityEvent } from "@/lib/security-logger";
 import { getClientIP } from "@/lib/utils";
 
 export async function POST(req: NextRequest) {
   try {
     // 1. Rate limiting
     const clientIP = getClientIP(req);
-    const { success } = await rateLimiters.game.limit(`register_${clientIP}`);
+    const { success, limit, remaining, reset } = await rateLimiters.auth.limit(`register_${clientIP}`);
     
     if (!success) {
+      logSecurityEvent.rateLimitExceeded(req, { endpoint: "/api/auth/register", limit, remaining, reset });
       return NextResponse.json(
         { error: "Too many requests. Please try again later." },
-        { status: 429 }
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": limit.toString(),
+            "X-RateLimit-Remaining": remaining.toString(),
+            "X-RateLimit-Reset": reset.toString(),
+          },
+        }
       );
     }
 

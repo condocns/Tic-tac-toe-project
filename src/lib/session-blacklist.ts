@@ -37,6 +37,18 @@ export async function isSessionBlacklisted(sessionId: string): Promise<boolean> 
   return false;
 }
 
+// Safe blacklist check with timeout to avoid long auth stalls
+export async function isSessionBlacklistedSafe(sessionId: string, timeoutMs = 75): Promise<boolean> {
+  try {
+    return await Promise.race([
+      isSessionBlacklisted(sessionId),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), timeoutMs)),
+    ]);
+  } catch {
+    return false;
+  }
+}
+
 // Session cache for performance - Memory first, Redis fallback
 export async function cacheSession(userId: string, sessionData: any) {
   // Use memory cache for instant performance (primary)

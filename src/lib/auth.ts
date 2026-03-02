@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { isAdminEmail } from "@/lib/utils";
 import { UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { isSessionBlacklisted } from "@/lib/session-blacklist";
+import { isSessionBlacklistedSafe } from "@/lib/session-blacklist";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -92,9 +92,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     async session({ session, token }) {
       if (session.user && token.sub) {
-        // Temporarily disable blacklist check for performance
-        // TODO: Re-enable when performance is stable
-        
+        const isBlacklisted = await isSessionBlacklistedSafe(token.sub);
+        if (isBlacklisted) {
+          throw new Error("Session revoked");
+        }
+
         session.user.id = token.sub;
         session.user.role = (token.role as UserRole) ?? UserRole.USER;
       }

@@ -20,6 +20,17 @@ export const historyQuerySchema = paginationSchema.extend({
   limit: z.coerce.number().min(1).max(50).default(10), // Specific limit for history
 });
 
+// Leaderboard query schema (extends pagination)
+export const leaderboardQuerySchema = paginationSchema.extend({
+  limit: z.coerce.number().min(1).max(50).default(20),
+  search: z
+    .string()
+    .max(100)
+    .optional()
+    .default("")
+    .transform((value) => value.trim()),
+});
+
 // Game result submission schema
 export const gameResultSchema = z.object({
   result: z.enum(["win", "loss", "draw"]),
