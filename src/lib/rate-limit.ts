@@ -32,10 +32,10 @@ export const rateLimiters = {
     analytics: true,
   }),
   
-  // Admin endpoints: 20 requests per minute
+  // Admin endpoints: 60 requests per minute (more user-friendly for UI operations)
   admin: new Ratelimit({
     redis: RedisClient.getInstance(),
-    limiter: Ratelimit.slidingWindow(20, "60 s"),
+    limiter: Ratelimit.slidingWindow(60, "60 s"),
     analytics: true,
   }),
   

@@ -36,10 +36,20 @@ export default function AdminPage() {
   const [data, setData] = useState<AdminData | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("score");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Debounce search to prevent excessive API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const fetchPlayers = useCallback(async () => {
     setLoading(true);
@@ -51,7 +61,7 @@ export default function AdminPage() {
         sortBy,
         order,
       });
-      if (search) params.set("search", search);
+      if (searchQuery) params.set("search", searchQuery);
       const res = await fetch(`/api/admin/players?${params}`);
       if (res.status === 403) {
         setError("Access denied. Admin role required.");
@@ -61,7 +71,7 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, sortBy, order]);
+  }, [page, searchQuery, sortBy, order]);
 
   useEffect(() => {
     fetchPlayers();
