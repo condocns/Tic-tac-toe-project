@@ -2,12 +2,22 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/lib/game/store";
+import { useShallow } from "zustand/react/shallow";
 import { Bot, Loader2, Trophy, Frown, Minus, Swords, Target, BrainCircuit } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function GameInfo() {
-  const { gameResult, botMessage, isAiThinking, currentTurn, humanPlayer, bonusAwarded, difficulty, gridSize } =
-    useGameStore();
+  const { gameResult, botMessage, isAiThinking, bonusAwarded, difficulty, gridSize } =
+    useGameStore(
+      useShallow((state) => ({
+        gameResult: state.gameResult,
+        botMessage: state.botMessage,
+        isAiThinking: state.isAiThinking,
+        bonusAwarded: state.bonusAwarded,
+        difficulty: state.difficulty,
+        gridSize: state.gridSize,
+      }))
+    );
 
   const getResultInfo = () => {
     switch (gameResult) {

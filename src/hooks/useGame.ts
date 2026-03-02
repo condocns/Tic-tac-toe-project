@@ -3,6 +3,7 @@
 import { useCallback, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useGameStore } from "@/lib/game/store";
+import { useShallow } from "zustand/react/shallow";
 import { gameApi } from "@/lib/api";
 import { ANIMATION_DURATIONS } from "@/constants";
 import type { Board, GameResult } from "@/lib/game/logic";
@@ -37,7 +38,34 @@ export function useGame() {
     setResultSaved,
     setCurrentStreak,
     setBonusAwarded,
-  } = useGameStore();
+  } = useGameStore(
+    useShallow((state) => ({
+      board: state.board,
+      humanPlayer: state.humanPlayer,
+      aiPlayer: state.aiPlayer,
+      difficulty: state.difficulty,
+      gridSize: state.gridSize,
+      isAiThinking: state.isAiThinking,
+      gameResult: state.gameResult,
+      winningLine: state.winningLine,
+      moves: state.moves,
+      resultSaved: state.resultSaved,
+      currentStreak: state.currentStreak,
+      addMove: state.addMove,
+      setBoard: state.setBoard,
+      setIsAiThinking: state.setIsAiThinking,
+      setCurrentTurn: state.setCurrentTurn,
+      setGameResult: state.setGameResult,
+      setWinningLine: state.setWinningLine,
+      setBotMessage: state.setBotMessage,
+      endGame: state.endGame,
+      stopTurnTimer: state.stopTurnTimer,
+      startTurnTimer: state.startTurnTimer,
+      setResultSaved: state.setResultSaved,
+      setCurrentStreak: state.setCurrentStreak,
+      setBonusAwarded: state.setBonusAwarded,
+    }))
+  );
 
   const moveMutation = useMutation({
     mutationFn: (cellIndex: number) => 

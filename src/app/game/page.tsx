@@ -11,13 +11,20 @@ import { TurnTimer } from "@/components/game/turn-timer";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { AnimatedParticles } from "@/components/ui/animated-particles";
 import { useGameStore } from "@/lib/game/store";
+import { useShallow } from "zustand/react/shallow";
 import { getBotMessage } from "@/lib/game/bot-messages";
 import { StatsDisplay } from "@/components/game/stats-display";
 
 export default function GamePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { resetGame, startGame, setBotMessage } = useGameStore();
+  const { resetGame, startGame, setBotMessage } = useGameStore(
+    useShallow((state) => ({
+      resetGame: state.resetGame,
+      startGame: state.startGame,
+      setBotMessage: state.setBotMessage,
+    }))
+  );
 
   // 2026 Standard: ใช้ useTransition สำหรับ non-urgent updates
   const [isPending, startTransition] = useTransition();

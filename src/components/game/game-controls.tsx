@@ -1,6 +1,7 @@
 "use client";
 
 import { useGameStore } from "@/lib/game/store";
+import { useShallow } from "zustand/react/shallow";
 import { Button } from "@/components/ui/button";
 import { RotateCcw, Play, Grid3x3, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,7 +10,18 @@ import { DIFFICULTY_GRID_CONFIGS, type GridSize } from "@/constants";
 
 export function GameControls() {
   const { difficulty, setDifficulty, gridSize, setGridSize, resetGame, gameResult, setBotMessage, startGame } =
-    useGameStore();
+    useGameStore(
+      useShallow((state) => ({
+        difficulty: state.difficulty,
+        setDifficulty: state.setDifficulty,
+        gridSize: state.gridSize,
+        setGridSize: state.setGridSize,
+        resetGame: state.resetGame,
+        gameResult: state.gameResult,
+        setBotMessage: state.setBotMessage,
+        startGame: state.startGame,
+      }))
+    );
 
   const handleNewGame = () => {
     resetGame();

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useGameStore } from "@/lib/game/store";
+import { useShallow } from "zustand/react/shallow";
 import { TURN_TIMER } from "@/constants";
 
 export function useTurnTimer() {
@@ -18,7 +19,22 @@ export function useTurnTimer() {
     stopTurnTimer,
     updateTimeRemaining,
     handleTimeExpired,
-  } = useGameStore();
+  } = useGameStore(
+    useShallow((state) => ({
+      currentTurn: state.currentTurn,
+      humanPlayer: state.humanPlayer,
+      isAiThinking: state.isAiThinking,
+      gameResult: state.gameResult,
+      turnStartTime: state.turnStartTime,
+      timeRemaining: state.timeRemaining,
+      isTimerActive: state.isTimerActive,
+      board: state.board,
+      startTurnTimer: state.startTurnTimer,
+      stopTurnTimer: state.stopTurnTimer,
+      updateTimeRemaining: state.updateTimeRemaining,
+      handleTimeExpired: state.handleTimeExpired,
+    }))
+  );
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
