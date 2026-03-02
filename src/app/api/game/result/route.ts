@@ -5,6 +5,7 @@ import { rateLimiters } from "@/lib/rate-limit";
 import { logSecurityEvent } from "@/lib/security-logger";
 import { getClientIP } from "@/lib/utils";
 import { redis } from "@/lib/redis";
+import { gameResultSchema } from "@/lib/validations";
 
 interface GameResultRequest {
   result: "win" | "loss" | "draw";
@@ -49,16 +50,22 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body: GameResultRequest = await req.json();
-    const { result, difficulty, moves, duration } = body;
+    const body = await req.json();
+    
+    // Validate input using Zod
+    const validationResult = gameResultSchema.safeParse(body);
+    if (!validationResult.success) {
+      console.log("❌ Invalid request body:", validationResult.error.format());
+      return NextResponse.json(
+        { error: "Invalid request data", details: validationResult.error.format() }, 
+        { status: 400 }
+      );
+    }
+    
+    const { result, difficulty, moves, duration } = validationResult.data;
     const tokenEmail = typeof token.email === "string" ? token.email : undefined;
     
     console.log("📊 Request data:", { result, difficulty, moves, duration, userId: token.sub });
-
-    if (!["win", "loss", "draw"].includes(result)) {
-      console.log("❌ Invalid result:", result);
-      return NextResponse.json({ error: "Invalid result" }, { status: 400 });
-    }
 
     // Calculate score change and streak in a single transaction
     const updatedUser = await prisma.$transaction(async (tx) => {

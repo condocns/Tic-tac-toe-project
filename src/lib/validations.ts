@@ -20,6 +20,10 @@ export const historyQuerySchema = paginationSchema.extend({
   limit: z.coerce.number().min(1).max(50).default(10), // Specific limit for history
 });
 
-// You can add more schemas here as the project grows:
-// export const gameResultSchema = z.object({ ... });
-// export const profileUpdateSchema = z.object({ ... });
+// Game result submission schema
+export const gameResultSchema = z.object({
+  result: z.enum(["win", "loss", "draw"]),
+  difficulty: z.enum(["easy", "medium", "hard"]),
+  moves: z.array(z.number().min(0).max(24)).max(25), // max 5x5 board = 25 moves
+  duration: z.number().min(0).max(3600), // Max 1 hour
+});
