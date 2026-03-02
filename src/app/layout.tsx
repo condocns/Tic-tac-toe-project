@@ -19,12 +19,29 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.className} min-h-screen bg-gradient-to-br from-purple-200 via-purple-400 to-purple-200 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900`}>
         <QueryProvider>
           <SessionProvider>
             <div className="relative flex min-h-screen flex-col">
+              {/* Background elements for all pages */}
+              <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute inset-0 bg-grid-white/[0.02] bg-grid-16" />
+                {[...Array(15)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute bg-white rounded-full opacity-5"
+                    style={{
+                      width: Math.random() * 3 + 1 + 'px',
+                      height: Math.random() * 3 + 1 + 'px',
+                      left: Math.random() * 100 + '%',
+                      top: Math.random() * 100 + '%',
+                    }}
+                  />
+                ))}
+              </div>
+              
               <Navbar />
-              <main className="flex-1">{children}</main>
+              <main className="relative z-10 flex-1">{children}</main>
             </div>
           </SessionProvider>
         </QueryProvider>
