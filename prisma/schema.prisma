@@ -8,33 +8,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum GameResult {
-  WIN
-  LOSS
-  DRAW
-}
-
-enum Difficulty {
-  EASY
-  MEDIUM
-  HARD
-}
-
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -55,28 +42,37 @@ model User {
   gamesPlayed   Int       @default(0)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-
-  accounts Account[]
-  games    Game[]
+  accounts      Account[]
+  games         Game[]
 
   @@index([score(sort: Desc)])
   @@index([email])
 }
 
 model Game {
-  id         String      @id @default(cuid())
+  id         String     @id @default(cuid())
   userId     String
+  moves      String
+  duration   Int
+  createdAt  DateTime   @default(now())
   result     GameResult
   difficulty Difficulty
-  moves      String      @db.Text // JSON string of move sequence
-  duration   Int         // game duration in seconds
-  createdAt  DateTime    @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([createdAt(sort: Desc)])
   @@index([result])
   @@index([difficulty])
   @@index([userId, result])
+}
+
+enum GameResult {
+  WIN
+  LOSS
+  DRAW
+}
+
+enum Difficulty {
+  EASY
+  HARD
 }

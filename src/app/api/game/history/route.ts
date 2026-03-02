@@ -13,14 +13,33 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "10")));
 
   try {
+    const tokenEmail = typeof token.email === "string" ? token.email : undefined;
+    
+    // Find actual user ID (handles provider ID vs database CUID mismatch)
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: token.sub },
+          ...(tokenEmail ? [{ email: tokenEmail }] : []),
+        ],
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json({
+        games: [],
+        pagination: { page, limit, total: 0, totalPages: 0 },
+      });
+    }
+
     const [games, total] = await Promise.all([
       prisma.game.findMany({
-        where: { userId: token.sub },
+        where: { userId: user.id },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
-      prisma.game.count({ where: { userId: token.sub } }),
+      prisma.game.count({ where: { userId: user.id } }),
     ]);
 
     return NextResponse.json({
