@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { leaderboardApi } from "@/lib/api";
 
 interface UseLeaderboardProps {
@@ -13,9 +13,12 @@ export function useLeaderboard({ page = 1, limit = 10, search = "" }: UseLeaderb
   return useQuery({
     queryKey: ["leaderboard", page, limit, search],
     queryFn: () => leaderboardApi.getLeaderboard(page, limit, search),
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: Infinity, // Rely on explicit invalidation for real-time updates
     gcTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,
     retryDelay: 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
+    notifyOnChangeProps: ["data"],
   });
 }

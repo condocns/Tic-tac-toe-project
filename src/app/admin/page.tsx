@@ -131,14 +131,25 @@ export default function AdminPage() {
     });
   };
 
-  const clearCache = () => {
+  const clearCache = useCallback(() => {
     // Clear all admin cache
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('admin_players_')) {
         localStorage.removeItem(key);
       }
     });
-  };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleInvalidate = () => {
+      clearCache();
+      fetchPlayers();
+    };
+
+    window.addEventListener("adminPlayersInvalidate", handleInvalidate);
+    return () => window.removeEventListener("adminPlayersInvalidate", handleInvalidate);
+  }, [clearCache, fetchPlayers]);
 
   if (loading && !data) {
     return <PageLoading />;

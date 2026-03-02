@@ -179,6 +179,20 @@ export function useGame() {
         
         return updatedStats;
       });
+
+      // Refresh leaderboard/history views when results change
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["gameHistory"] });
+
+      // Clear admin cache to ensure updated scores on next open
+      if (typeof window !== "undefined") {
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith("admin_players_")) {
+            localStorage.removeItem(key);
+          }
+        });
+        window.dispatchEvent(new Event("adminPlayersInvalidate"));
+      }
     } catch (error) {
       console.error("❌ Failed to save game result:", error);
       // Reset flag on error so it can be retried
