@@ -131,7 +131,7 @@ export function GameBoard() {
                   : {}
               }
             >
-              <AnimatePresence mode="wait">
+              <AnimatePresence>
                 {cell && (
                   <motion.span
                     key={`${index}-${cell}`}
@@ -149,24 +149,25 @@ export function GameBoard() {
                     {cell}
                   </motion.span>
                 )}
-                {isWinningCell && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0 }}
-                    transition={{ duration: 0.3, delay: 0.2 }}
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                  >
-                    <div 
-                      className={cn(
-                        "bg-gradient-to-r from-green-400 to-green-600 rounded-full shadow-lg",
-                        getWinningLineStyle(winningLine, gridSize)
-                      )}
-                      style={getWinningLineTransform(winningLine, gridSize)}
-                    />
-                  </motion.div>
-                )}
               </AnimatePresence>
+              
+              {isWinningCell && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                >
+                  <div 
+                    className={cn(
+                      "bg-gradient-to-r from-green-400 to-green-600 rounded-full shadow-lg",
+                      getWinningLineStyle(winningLine, gridSize)
+                    )}
+                    style={getWinningLineTransform(winningLine, gridSize)}
+                  />
+                </motion.div>
+              )}
             </motion.button>
           );
         })}

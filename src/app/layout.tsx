@@ -4,24 +4,32 @@ import "./globals.css";
 import { SessionProvider } from "@/components/providers/session-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { Navbar } from "@/components/layout/navbar";
+import { auth } from "@/lib/auth";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Tic-Tac-Toe | Player vs AI",
   description: "Challenge the AI in a game of Tic-Tac-Toe. Login, play, and climb the leaderboard!",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} min-h-screen bg-gradient-to-br from-purple-200 via-purple-400 to-purple-200 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900`}>
         <QueryProvider>
-          <SessionProvider>
+          <SessionProvider session={session}>
             <div className="relative flex min-h-screen flex-col">
               {/* Background elements for all pages */}
               <div className="fixed inset-0 overflow-hidden pointer-events-none">

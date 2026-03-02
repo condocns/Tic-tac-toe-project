@@ -17,6 +17,7 @@ interface GameState {
   moves: number[];
   gameStartTime: number | null;
   gameDuration: number;
+  resultSaved: boolean; // Prevent duplicate API calls
   
   // Turn timer
   turnStartTime: number | null;
@@ -37,6 +38,7 @@ interface GameState {
   resetGame: () => void;
   startGame: () => void;
   endGame: () => void;
+  setResultSaved: (saved: boolean) => void; // New action
   
   // Timer actions
   startTurnTimer: () => void;
@@ -59,6 +61,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   moves: [],
   gameStartTime: null,
   gameDuration: 0,
+  resultSaved: false, // Prevent duplicate API calls
   
   // Timer state
   turnStartTime: null,
@@ -83,6 +86,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setIsAiThinking: (thinking) => set({ isAiThinking: thinking }),
   setBotMessage: (message) => set({ botMessage: message }),
   addMove: (index) => set((state) => ({ moves: [...state.moves, index] })),
+  setResultSaved: (saved) => set({ resultSaved: saved }), // New action
 
   resetGame: () =>
     set({
@@ -95,6 +99,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       moves: [],
       gameStartTime: null,
       gameDuration: 0,
+      resultSaved: false, // Reset result saved flag
       turnStartTime: null,
       timeRemaining: 20,
       isTimerActive: false,

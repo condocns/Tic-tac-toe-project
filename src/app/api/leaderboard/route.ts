@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 
 const CACHE_KEY = "leaderboard";
-const CACHE_TTL = 60; // 60 seconds
+const CACHE_TTL = 10; // 10 seconds - faster updates
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

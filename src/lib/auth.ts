@@ -4,7 +4,7 @@ import GitHub from "next-auth/providers/github";
 import { prisma } from "@/lib/prisma";
 import { isAdminEmail } from "@/lib/utils";
 
-export const { handlers, signIn, signOut } = NextAuth({
+export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID!,

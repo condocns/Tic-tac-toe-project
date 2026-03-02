@@ -53,7 +53,10 @@ export default function HistoryPage() {
   if (!session) redirect("/login");
 
   const getResultDisplay = (result: string) => {
-    switch (result) {
+    // Convert uppercase DB values to lowercase for comparison
+    const normalizedResult = result.toLowerCase();
+    
+    switch (normalizedResult) {
       case "win":
         return { icon: <Trophy className="h-4 w-4 text-green-500" />, text: "Win", color: "text-green-500", bg: "bg-green-500/10" };
       case "loss":

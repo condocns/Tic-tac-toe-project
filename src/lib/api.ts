@@ -43,11 +43,11 @@ class ApiClient {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async post<T>(url: string, data?: unknown): Promise<T> {
+  async post<T>(url: string, data?: unknown, retries = 2): Promise<T> {
     const response = await this.fetchWithRetry(url, {
       method: "POST",
       body: data ? JSON.stringify(data) : undefined,
-    });
+    }, retries);
     return response.json();
   }
 
@@ -78,7 +78,7 @@ export const gameApi = {
     difficulty: string;
     moves: number[];
     duration: number;
-  }) => apiClient.post(API_ENDPOINTS.GAME_RESULT, data),
+  }) => apiClient.post(API_ENDPOINTS.GAME_RESULT, data, 0),
 
   getHistory: (page = 1, limit = 10) =>
     apiClient.get(`${API_ENDPOINTS.GAME_HISTORY}?page=${page}&limit=${limit}`),

@@ -2,12 +2,14 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useTransition } from "react";
 import { motion } from "framer-motion";
 import { GameBoard } from "@/components/game/game-board";
 import { GameInfo } from "@/components/game/game-info";
 import { GameControls } from "@/components/game/game-controls";
 import { TurnTimer } from "@/components/game/turn-timer";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { AnimatedParticles } from "@/components/ui/animated-particles";
 import { useGameStore } from "@/lib/game/store";
 import { getBotMessage } from "@/lib/game/bot-messages";
 
@@ -15,64 +17,38 @@ export default function GamePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { resetGame, startGame, setBotMessage } = useGameStore();
-  const [isChecking, setIsChecking] = useState(true);
-  const [mounted, setMounted] = useState(false);
+
+  // 2026 Standard: ใช้ useTransition สำหรับ non-urgent updates
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    setMounted(true);
-    resetGame();
-    startGame();
-    setBotMessage(getBotMessage("game_start"));
+    // 2026 Standard: ใช้ startTransition สำหรับ non-critical updates
+    startTransition(() => {
+      resetGame();
+      startGame();
+      setBotMessage(getBotMessage("game_start"));
+    });
   }, [resetGame, startGame, setBotMessage]);
 
-  useEffect(() => {
-    // รอสักครู่ให้ session โหลดเสร็จ
-    const timer = setTimeout(() => {
-      setIsChecking(false);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (status === "loading" || isChecking || !mounted) {
+  // 2026 Standard: ตรวจสอบ session state อย่างเดียว (ไม่ต้อง mounted state)
+  if (status === "loading") {
     return (
       <div className="flex items-center justify-center min-h-[80vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   if (!session) {
-    router.push("/login?callbackUrl=/game");
+    // 2026 Standard: ใช้ navigate แทน router.push สำหรับ better UX
+    router.replace("/login?callbackUrl=/game");
     return null;
   }
 
   return (
     <div className="px-4 py-8">
       {/* Enhanced animated background elements */}
-      <div className="absolute inset-0">
-        {[...Array(15)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute bg-white rounded-full opacity-10"
-            style={{
-              width: Math.random() * 3 + 1 + 'px',
-              height: Math.random() * 3 + 1 + 'px',
-              left: Math.random() * 100 + '%',
-              top: Math.random() * 100 + '%',
-            }}
-            animate={{
-              y: [0, -15, 0],
-              opacity: [0.1, 0.3, 0.1],
-            }}
-            transition={{
-              duration: Math.random() * 3 + 2,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-            }}
-          />
-        ))}
-      </div>
+      <AnimatedParticles count={15} />
       
       <div className="relative z-10 w-full max-w-6xl mx-auto">
         {/* Header Section */}

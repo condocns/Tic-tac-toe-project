@@ -4,6 +4,9 @@ import { getAIMove } from "@/lib/game/ai";
 import { checkWinner, isBoardFull, getGameResult, type Board, type Difficulty, type Player } from "@/lib/game/logic";
 import { getBotMessage } from "@/lib/game/bot-messages";
 import { BOARD_CONFIGS } from "@/constants";
+import { rateLimiters, getRateLimiterForRoute } from "@/lib/rate-limit";
+import { logSecurityEvent } from "@/lib/security-logger";
+import { getClientIP } from "@/lib/utils";
 
 interface MoveRequest {
   cellIndex: number;
@@ -15,8 +18,34 @@ interface MoveRequest {
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limiting
+  const clientIP = getClientIP(req);
+  const rateLimiter = rateLimiters.game;
+  const { success, limit, remaining, reset } = await rateLimiter.limit(clientIP);
+  
+  if (!success) {
+    logSecurityEvent.rateLimitExceeded(req, { 
+      endpoint: "/api/game/move",
+      limit,
+      remaining,
+      reset 
+    });
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { 
+        status: 429,
+        headers: {
+          "X-RateLimit-Limit": limit.toString(),
+          "X-RateLimit-Remaining": remaining.toString(),
+          "X-RateLimit-Reset": reset.toString(),
+        },
+      }
+    );
+  }
+
   const token = await getToken({ req, secret: process.env.AUTH_SECRET });
   if (!token?.sub) {
+    logSecurityEvent.unauthorizedAccess(req, { endpoint: "/api/game/move" });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

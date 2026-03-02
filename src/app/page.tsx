@@ -6,20 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gamepad2, Trophy, Shield, Zap, Sparkles, Star } from "lucide-react";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useTransition } from "react";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { AnimatedParticles } from "@/components/ui/animated-particles";
 
 export default function HomePage() {
-  const [mounted, setMounted] = useState(false);
   const { data: session, status } = useSession();
+  
+  // 2026 Standard: ใช้ useTransition สำหรับ non-urgent navigation
+  const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted || status === "loading") {
+  if (status === "loading") {
     return (
       <div className="px-4 py-8 md:py-12 flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -29,29 +29,7 @@ export default function HomePage() {
   return (
     <div className="px-4 py-8 md:py-12">
       {/* Enhanced animated background elements */}
-      <div className="absolute inset-0">
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute bg-white rounded-full opacity-10"
-            style={{
-              width: Math.random() * 4 + 1 + 'px',
-              height: Math.random() * 4 + 1 + 'px',
-              left: Math.random() * 100 + '%',
-              top: Math.random() * 100 + '%',
-            }}
-            animate={{
-              y: [0, -20, 0],
-              opacity: [0.1, 0.3, 0.1],
-            }}
-            transition={{
-              duration: Math.random() * 3 + 2,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-            }}
-          />
-        ))}
-      </div>
+      <AnimatedParticles count={20} />
       
       <div className="relative z-10 mx-auto max-w-4xl text-center space-y-8 px-4">
         <motion.div 

@@ -1,10 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
+import { rateLimiters } from "@/lib/rate-limit";
+import { logSecurityEvent } from "@/lib/security-logger";
+import { getClientIP } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
+  // Rate limiting
+  const clientIP = getClientIP(req);
+  const rateLimiter = rateLimiters.admin;
+  const { success, limit, remaining, reset } = await rateLimiter.limit(clientIP);
+  
+  if (!success) {
+    logSecurityEvent.rateLimitExceeded(req, { 
+      endpoint: "/api/admin/players",
+      limit,
+      remaining,
+      reset 
+    });
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { 
+        status: 429,
+        headers: {
+          "X-RateLimit-Limit": limit.toString(),
+          "X-RateLimit-Remaining": remaining.toString(),
+          "X-RateLimit-Reset": reset.toString(),
+        },
+      }
+    );
+  }
+
   const token = await getToken({ req, secret: process.env.AUTH_SECRET });
   if (!token?.sub) {
+    logSecurityEvent.unauthorizedAccess(req, { endpoint: "/api/admin/players" });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -20,7 +49,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
+  const limitCount = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
   const search = searchParams.get("search") || "";
   const sortBy = searchParams.get("sortBy") || "score";
   const order = searchParams.get("order") === "asc" ? "asc" : "desc";
@@ -61,8 +90,8 @@ export async function GET(req: NextRequest) {
           createdAt: true,
         },
         orderBy,
-        skip: (page - 1) * limit,
-        take: limit,
+        skip: (page - 1) * limitCount,
+        take: limitCount,
       }),
       prisma.user.count({ where }),
     ]);
@@ -76,7 +105,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       players,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      pagination: { page, limit: limitCount, total, totalPages: Math.ceil(total / limitCount) },
       stats: {
         totalPlayers: stats._count,
         totalGamesPlayed: stats._sum.gamesPlayed ?? 0,

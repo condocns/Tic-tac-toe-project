@@ -19,6 +19,8 @@ export function useGame() {
     isAiThinking,
     gameResult,
     winningLine,
+    moves,
+    resultSaved,
     addMove,
     setBoard,
     setIsAiThinking,
@@ -28,6 +30,7 @@ export function useGame() {
     setBotMessage,
     endGame,
     stopTurnTimer,
+    setResultSaved,
   } = useGameStore();
 
   const moveMutation = useMutation({
@@ -43,6 +46,50 @@ export function useGame() {
     retry: 1,
     retryDelay: 1000,
   });
+
+  // Save game result mutation
+  const saveResultMutation = useMutation({
+    mutationFn: (data: {
+      result: "win" | "loss" | "draw";
+      difficulty: string;
+      moves: number[];
+      duration: number;
+    }) => gameApi.saveResult(data),
+    retry: 0,
+  });
+
+  // Function to save game result
+  const saveGameResult = useCallback(async (result: GameResult) => {
+    const { gameStartTime } = useGameStore.getState();
+    const duration = gameStartTime
+      ? Math.max(1, Math.floor((Date.now() - gameStartTime) / 1000))
+      : 0;
+
+    console.log("🎮 saveGameResult called:", { result, resultSaved, difficulty, moves, duration });
+    
+    if (resultSaved || !result) {
+      console.log("❌ Skipping save - result already saved or no result");
+      return; // Prevent duplicate calls
+    }
+    
+    // Set flag immediately to prevent duplicates
+    setResultSaved(true);
+    
+    try {
+      console.log("📤 Calling saveResult API...");
+      await saveResultMutation.mutateAsync({
+        result,
+        difficulty,
+        moves,
+        duration,
+      });
+      console.log("✅ Save result successful");
+    } catch (error) {
+      console.error("❌ Failed to save game result:", error);
+      // Reset flag on error so it can be retried
+      setResultSaved(false);
+    }
+  }, [resultSaved, difficulty, moves, saveResultMutation, setResultSaved]);
 
   const makeMove = useCallback(
     async (cellIndex: number) => {
@@ -75,7 +122,9 @@ export function useGame() {
         if (data.gameResult) {
           setGameResult(data.gameResult as GameResult);
           setWinningLine(data.winningLine || null);
-          endGame();
+          endGame(); // Calculate duration FIRST
+          // Save result after game ends
+          await saveGameResult(data.gameResult as GameResult);
           return;
         }
 
@@ -104,7 +153,9 @@ export function useGame() {
         if (data.gameResultAfterAI) {
           setGameResult(data.gameResultAfterAI as GameResult);
           setWinningLine(data.winningLineAfterAI || null);
-          endGame();
+          endGame(); // Calculate duration FIRST
+          // Save result after game ends
+          await saveGameResult(data.gameResultAfterAI as GameResult);
         }
       } catch (error) {
         console.error("Failed to make move:", error);
@@ -127,6 +178,7 @@ export function useGame() {
       setBotMessage,
       endGame,
       stopTurnTimer,
+      saveGameResult,
     ]
   );
 
