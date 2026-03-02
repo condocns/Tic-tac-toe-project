@@ -31,6 +31,7 @@ model User {
   name          String?
   email         String?   @unique
   emailVerified DateTime?
+  password      String?   // Added for Credentials login
   image         String?
   role          UserRole  @default(USER)
   score         Int       @default(0)

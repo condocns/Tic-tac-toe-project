@@ -27,3 +27,10 @@ export const gameResultSchema = z.object({
   moves: z.array(z.number().min(0).max(24)).max(25), // max 5x5 board = 25 moves
   duration: z.number().min(0).max(3600), // Max 1 hour
 });
+
+// User Registration schema
+export const registerSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters").max(50),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});

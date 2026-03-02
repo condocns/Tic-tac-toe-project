@@ -5,6 +5,7 @@ import { SessionProvider } from "@/components/providers/session-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { Navbar } from "@/components/layout/navbar";
 import { auth } from "@/lib/auth";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -51,6 +52,7 @@ export default async function RootLayout({
               <Navbar />
               <main className="relative z-10 flex-1">{children}</main>
             </div>
+            <Toaster richColors position="top-right" />
           </SessionProvider>
         </QueryProvider>
       </body>
