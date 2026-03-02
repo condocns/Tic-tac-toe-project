@@ -4,13 +4,18 @@ import { getToken } from "next-auth/jwt";
 import { UserRole } from "@prisma/client";
 
 export default async function proxy(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
-  const isLoggedIn = !!token;
   const isPublicRoute = ["/", "/login", "/api/health"].some(route => 
     req.nextUrl.pathname === route
   );
+
+  if (isPublicRoute) {
+    return NextResponse.next();
+  }
+
+  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
+  const isLoggedIn = !!token;
   
-  if (!isLoggedIn && !isPublicRoute) {
+  if (!isLoggedIn) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", req.url);
     return NextResponse.redirect(loginUrl);

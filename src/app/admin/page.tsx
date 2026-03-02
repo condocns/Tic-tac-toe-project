@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useTransition } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Shield, Users, Gamepad2, BarChart3, Search, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageLoading } from "@/components/ui/page-loading";
+import { NavigationLoading, PageTransition } from "@/components/ui/navigation-loading";
 
 interface Player {
   id: string;
@@ -42,6 +44,9 @@ export default function AdminPage() {
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  // 2026 Standard: ใช้ useTransition สำหรับ non-urgent navigation
+  const [isPending, startTransition] = useTransition();
 
   // Debounce search to prevent excessive API calls
   useEffect(() => {
@@ -64,12 +69,35 @@ export default function AdminPage() {
       });
       if (searchQuery) params.set("search", searchQuery);
       if (isAdminOnly) params.set("adminOnly", "true");
+      
+      const cacheKey = `admin_players_${params.toString()}`;
+      
+      // Check cache first
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { data: cachedData, timestamp } = JSON.parse(cached);
+        // Cache for 2 minutes
+        if (Date.now() - timestamp < 2 * 60 * 1000) {
+          setData(cachedData);
+          setLoading(false);
+          return;
+        }
+      }
+      
       const res = await fetch(`/api/admin/players?${params}`);
       if (res.status === 403) {
         setError("Access denied. Admin role required.");
         return;
       }
-      if (res.ok) setData(await res.json());
+      if (res.ok) {
+        const newData = await res.json();
+        setData(newData);
+        // Cache the result
+        localStorage.setItem(cacheKey, JSON.stringify({
+          data: newData,
+          timestamp: Date.now()
+        }));
+      }
     } finally {
       setLoading(false);
     }
@@ -90,14 +118,31 @@ export default function AdminPage() {
   if (!session) redirect("/login");
 
   const toggleSort = (field: string) => {
-    if (sortBy === field) {
-      setOrder((o) => (o === "desc" ? "asc" : "desc"));
-    } else {
-      setSortBy(field);
-      setOrder("desc");
-    }
-    setPage(1);
+    startTransition(() => {
+      if (sortBy === field) {
+        setOrder((o) => (o === "desc" ? "asc" : "desc"));
+      } else {
+        setSortBy(field);
+        setOrder("desc");
+      }
+      setPage(1);
+      // Clear cache when sorting changes
+      clearCache();
+    });
   };
+
+  const clearCache = () => {
+    // Clear all admin cache
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('admin_players_')) {
+        localStorage.removeItem(key);
+      }
+    });
+  };
+
+  if (loading && !data) {
+    return <PageLoading />;
+  }
 
   if (error) {
     return (
@@ -110,11 +155,12 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-6 sm:py-10 space-y-6">
-      <div className="flex items-center gap-2">
-        <Shield className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl sm:text-3xl font-bold">Admin Dashboard</h1>
-      </div>
+    <PageTransition isPending={isPending}>
+      <div className="container max-w-4xl mx-auto px-4 py-6 sm:py-10 space-y-6">
+        <div className="flex items-center gap-2">
+          <Shield className="h-6 w-6 text-primary" />
+          <h1 className="text-2xl sm:text-3xl font-bold">Admin Dashboard</h1>
+        </div>
 
       {/* Stats cards */}
       {data && (
@@ -258,6 +304,7 @@ export default function AdminPage() {
           </Button>
         </div>
       )}
-    </div>
+      </div>
+    </PageTransition>
   );
 }

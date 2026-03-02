@@ -12,7 +12,8 @@ export function useGameHistory({ page = 1, limit = 10 }: UseGameHistoryProps = {
   return useQuery({
     queryKey: ["gameHistory", page, limit],
     queryFn: () => gameApi.getHistory(page, limit),
-    staleTime: 30_000, // 30 seconds
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (was cacheTime)
     retry: 2,
     retryDelay: 1000,
   });

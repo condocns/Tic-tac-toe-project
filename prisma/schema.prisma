@@ -49,6 +49,8 @@ model User {
   // Best Practice: Compound index for leaderboard (score descending, resolving ties by oldest account)
   @@index([score(sort: Desc), createdAt(sort: Asc)])
   @@index([email])
+  @@index([name]) // For admin search
+  @@index([role, score(sort: Desc)]) // For admin filtering
 }
 
 model Game {

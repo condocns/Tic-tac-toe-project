@@ -4,7 +4,6 @@ import "./globals.css";
 import { SessionProvider } from "@/components/providers/session-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { Navbar } from "@/components/layout/navbar";
-import { auth } from "@/lib/auth";
 import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -19,18 +18,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} min-h-screen bg-gradient-to-br from-purple-200 via-purple-400 to-purple-200 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900`}>
         <QueryProvider>
-          <SessionProvider session={session}>
+          <SessionProvider>
             <div className="relative flex min-h-screen flex-col">
               {/* Background elements for all pages */}
               <div className="fixed inset-0 overflow-hidden pointer-events-none">

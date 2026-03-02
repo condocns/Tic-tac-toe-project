@@ -13,8 +13,8 @@ export function useLeaderboard({ page = 1, limit = 10, search = "" }: UseLeaderb
   return useQuery({
     queryKey: ["leaderboard", page, limit, search],
     queryFn: () => leaderboardApi.getLeaderboard(page, limit, search),
-    staleTime: 5_000, // 5 seconds - more frequent updates
-    refetchInterval: 10_000, // Auto refetch every 10 seconds
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,
     retryDelay: 1000,
   });

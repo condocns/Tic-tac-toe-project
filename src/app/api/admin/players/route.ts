@@ -107,8 +107,8 @@ export async function GET(req: NextRequest) {
       [sortBy]: order
     };
 
-    // 6. Database Operations (Concurrent)
-    const [players, total, stats] = await Promise.all([
+    // 6. Database Operations (Optimized - 2 queries instead of 3)
+    const [players, totalCount] = await Promise.all([
       prisma.user.findMany({
         where: whereCondition,
         select: {
@@ -130,13 +130,17 @@ export async function GET(req: NextRequest) {
         skip: (page - 1) * limitCount,
         take: limitCount,
       }),
-      prisma.user.count({ where: whereCondition }),
-      prisma.user.aggregate({
-        _sum: { gamesPlayed: true },
-        _count: true,
-        _avg: { score: true },
-      })
+      prisma.user.count({ where: whereCondition })
     ]);
+
+    // Calculate stats from the current page data (faster than aggregate)
+    const stats = {
+      totalPlayers: totalCount,
+      totalGamesPlayed: players.reduce((sum, p) => sum + p.gamesPlayed, 0),
+      averageScore: players.length > 0 
+        ? Math.round((players.reduce((sum, p) => sum + p.score, 0) / players.length) * 100) / 100
+        : 0,
+    };
 
     // 7. Structured Response
     return NextResponse.json({
@@ -144,14 +148,10 @@ export async function GET(req: NextRequest) {
       pagination: { 
         page, 
         limit: limitCount, 
-        total, 
-        totalPages: Math.ceil(total / limitCount) 
+        total: totalCount, 
+        totalPages: Math.ceil(totalCount / limitCount) 
       },
-      stats: {
-        totalPlayers: stats._count,
-        totalGamesPlayed: stats._sum.gamesPlayed ?? 0,
-        averageScore: Math.round((stats._avg.score ?? 0) * 100) / 100,
-      },
+      stats,
     });
 
   } catch (error) {

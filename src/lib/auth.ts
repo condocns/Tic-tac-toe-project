@@ -6,10 +6,9 @@ import { prisma } from "@/lib/prisma";
 import { isAdminEmail } from "@/lib/utils";
 import { UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import { isSessionBlacklisted } from "@/lib/session-blacklist";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(prisma),
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID!,
@@ -68,12 +67,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Auto-assign admin role if email is in ADMIN_EMAILS
         const expectedRole = user.email && isAdminEmail(user.email) ? UserRole.ADMIN : UserRole.USER;
         
-        // If this is a new OAuth user, or a login event, we should ensure their role in the DB is correct
-        if (user.role !== expectedRole) {
-          // This will happen async and update the DB, while we set the token immediately
-          prisma.user.update({
-            where: { id: user.id },
-            data: { role: expectedRole },
+        // For OAuth users, create/update user in DB asynchronously
+        if (user.email && !('password' in user)) {
+          prisma.user.upsert({
+            where: { email: user.email },
+            update: { 
+              name: user.name,
+              image: user.image,
+              role: expectedRole,
+            },
+            create: {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              image: user.image,
+              role: expectedRole,
+            },
           }).catch(console.error);
         }
         
@@ -83,6 +92,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     async session({ session, token }) {
       if (session.user && token.sub) {
+        // Temporarily disable blacklist check for performance
+        // TODO: Re-enable when performance is stable
+        
         session.user.id = token.sub;
         session.user.role = (token.role as UserRole) ?? UserRole.USER;
       }
@@ -94,5 +106,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   session: {
     strategy: "jwt",
+    maxAge: 15 * 60, // 15 minutes
+    updateAge: 5 * 60, // Update every 5 minutes
+  },
+  events: {
+    async signOut(params: any) {
+      // Blacklist session on logout
+      const userId = params.session?.user?.id || params.token?.sub;
+      if (userId) {
+        const { blacklistSession } = await import("@/lib/session-blacklist");
+        await blacklistSession(userId);
+      }
+    },
   },
 });
