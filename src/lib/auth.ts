@@ -3,6 +3,7 @@ import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
 import { prisma } from "@/lib/prisma";
 import { isAdminEmail } from "@/lib/utils";
+import { UserRole } from "@prisma/client";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -26,7 +27,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         
         if (!existingUser) {
           // Auto-assign admin role if email is in ADMIN_EMAILS
-          const role = user.email && isAdminEmail(user.email) ? "admin" : "user";
+          const role = user.email && isAdminEmail(user.email) ? UserRole.ADMIN : UserRole.USER;
           
           await prisma.user.upsert({
             where: { email: user.email! },
@@ -47,7 +48,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.role = role;
         } else {
           // Check if role needs to be updated (for existing users)
-          const expectedRole = user.email && isAdminEmail(user.email) ? "admin" : "user";
+          const expectedRole = user.email && isAdminEmail(user.email) ? UserRole.ADMIN : UserRole.USER;
           if (existingUser.role !== expectedRole) {
             await prisma.user.update({
               where: { id: token.sub },
@@ -64,7 +65,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub;
-        session.user.role = (token.role as string) ?? "user";
+        session.user.role = (token.role as UserRole) ?? UserRole.USER;
       }
       return session;
     },

@@ -32,7 +32,7 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  role          String    @default("user")
+  role          UserRole  @default(USER)
   score         Int       @default(0)
   wins          Int       @default(0)
   losses        Int       @default(0)
@@ -45,14 +45,16 @@ model User {
   accounts      Account[]
   games         Game[]
 
-  @@index([score(sort: Desc)])
+  // Best Practice: Compound index for leaderboard (score descending, resolving ties by oldest account)
+  @@index([score(sort: Desc), createdAt(sort: Asc)])
   @@index([email])
 }
 
 model Game {
   id         String     @id @default(cuid())
   userId     String
-  moves      String
+  // Best Practice: Use Int[] for arrays of numbers instead of stringified JSON
+  moves      Int[]
   duration   Int
   createdAt  DateTime   @default(now())
   result     GameResult
@@ -66,6 +68,12 @@ model Game {
   @@index([userId, result])
 }
 
+// Best Practice: Use Enum for Role instead of plain String
+enum UserRole {
+  USER
+  ADMIN
+}
+
 enum GameResult {
   WIN
   LOSS
@@ -74,5 +82,6 @@ enum GameResult {
 
 enum Difficulty {
   EASY
+  MEDIUM
   HARD
 }

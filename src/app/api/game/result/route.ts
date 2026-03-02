@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           result: result.toUpperCase() as "WIN" | "LOSS" | "DRAW",
           difficulty: difficulty.toUpperCase() as "EASY" | "MEDIUM" | "HARD",
-          moves: JSON.stringify(moves),
+          moves: moves, // Now stored natively as Int[] in PostgreSQL
           duration,
         },
       });

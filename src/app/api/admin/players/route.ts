@@ -5,7 +5,7 @@ import { rateLimiters } from "@/lib/rate-limit";
 import { logSecurityEvent } from "@/lib/security-logger";
 import { getClientIP } from "@/lib/utils";
 import { adminQuerySchema } from "@/lib/validations";
-import { Prisma } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   // 1. Rate limiting
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
       select: { role: true },
     });
 
-    if (user?.role !== "admin") {
+    if (user?.role !== UserRole.ADMIN) {
       logSecurityEvent.unauthorizedAccess(req, { 
         endpoint: "/api/admin/players", 
         userId: token.sub,
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
     
     // Handle role filter
     if (adminOnly === "true") {
-      whereCondition.role = "admin";
+      whereCondition.role = UserRole.ADMIN;
     }
     
     // Handle search text

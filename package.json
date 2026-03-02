@@ -23,7 +23,6 @@
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
-    "@radix-ui/react-toast": "^1.2.15",
     "@tanstack/react-query": "^5.90.21",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.36.2",
@@ -35,7 +34,6 @@
     "next-auth": "5.0.0-beta.30",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "zod": "^4.3.6",
     "zustand": "^5.0.11"

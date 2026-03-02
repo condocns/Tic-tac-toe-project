@@ -9,6 +9,7 @@ import { useState } from "react";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { UserRole } from "@prisma/client";
 
 export function Navbar() {
   const { data: session } = useSession();
@@ -96,7 +97,7 @@ export function Navbar() {
                 <span className="hidden xl:inline">History</span>
               </Link>
             </motion.div>
-            {session.user.role === "admin" && (
+            {session.user.role === UserRole.ADMIN && (
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link 
                   href="/admin" 
@@ -284,7 +285,7 @@ export function Navbar() {
                   </div>
                 </Link>
               </motion.div>
-              {session.user.role === "admin" && (
+              {session.user.role === UserRole.ADMIN && (
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                   <Link
                     href="/admin"

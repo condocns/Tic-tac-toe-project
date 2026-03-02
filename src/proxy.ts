@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { UserRole } from "@prisma/client";
 
 export default async function proxy(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.AUTH_SECRET });
@@ -17,7 +18,7 @@ export default async function proxy(req: NextRequest) {
   
   // Protect /admin routes
   if (req.nextUrl.pathname.startsWith("/admin")) {
-    if (token?.role !== "admin") {
+    if (token?.role !== UserRole.ADMIN) {
       return NextResponse.redirect(new URL("/", req.url));
     }
   }
