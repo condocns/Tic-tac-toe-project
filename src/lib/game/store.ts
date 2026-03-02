@@ -144,7 +144,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   updateTimeRemaining: (time) => set({ timeRemaining: time }),
   
   handleTimeExpired: () => {
-    const { currentTurn, humanPlayer, isAiThinking, board, difficulty, aiPlayer, humanPlayer: human, addMove } = get();
+    const { currentTurn, humanPlayer, isAiThinking, board, aiPlayer, addMove } = get();
     
     // Only handle timeout for human turn, not AI turn
     if (currentTurn === humanPlayer && !isAiThinking) {
@@ -178,6 +178,15 @@ export const useGameStore = create<GameState>((set, get) => ({
           botMessage: "⏰ Time's up! But there are no moves left.",
         });
       }
+    } else {
+      // Bot timed out
+      set({
+        currentTurn: humanPlayer,
+        isAiThinking: false,
+        turnStartTime: null,
+        isTimerActive: false,
+        botMessage: "⏰ Bot took too long! Your turn.",
+      });
     }
   },
 }));

@@ -33,6 +33,7 @@ export function useGame() {
     setBotMessage,
     endGame,
     stopTurnTimer,
+    startTurnTimer,
     setResultSaved,
     setCurrentStreak,
     setBonusAwarded,
@@ -168,6 +169,14 @@ export function useGame() {
     }
   }, [resultSaved, difficulty, moves, saveResultMutation, setResultSaved, queryClient, currentStreak, setCurrentStreak, setBonusAwarded]);
 
+  const handleTimeExpired = useCallback(() => {
+    // Note: Store's handleTimeExpired also exists, but useGame orchestrates the API calls
+    const state = useGameStore.getState();
+    if (state.currentTurn === state.humanPlayer && !state.isAiThinking) {
+      // Logic moved fully to store or we can keep some here
+    }
+  }, []);
+
   const makeMove = useCallback(
     async (cellIndex: number) => {
       if (board[cellIndex] !== null || isAiThinking || gameResult !== null) {
@@ -212,14 +221,40 @@ export function useGame() {
         // Show thinking message
         setBotMessage(getBotMessage("thinking"));
 
+        // Start bot's turn timer
+        startTurnTimer();
+
         // Get bot thinking time from runtime config
         const config = getRuntimeConfig();
-        const thinkingTime = config.BOT_THINKING[difficulty.toUpperCase() as keyof typeof config.BOT_THINKING];
-        await new Promise((resolve) => 
-          setTimeout(resolve, thinkingTime)
-        );
+        let thinkingTime = config.BOT_THINKING[difficulty.toUpperCase() as keyof typeof config.BOT_THINKING];
+        
+        // Ensure thinking time does not exceed turn timer max
+        const maxTurnTime = config.TURN_TIMER[difficulty.toUpperCase() as keyof typeof config.TURN_TIMER] * 1000;
+        if (thinkingTime > maxTurnTime) {
+          thinkingTime = maxTurnTime;
+        }
+
+        let timeExpired = false;
+
+        // Check every 100ms if bot timed out
+        const startTime = Date.now();
+        while (Date.now() - startTime < thinkingTime) {
+          // Check if game state changed to human turn (meaning timeout occurred)
+          const state = useGameStore.getState();
+          if (state.currentTurn === humanPlayer) {
+            timeExpired = true;
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+
+        // If time expired, do not apply AI move, just exit
+        if (timeExpired) {
+          return;
+        }
 
         // Apply AI move
+        stopTurnTimer();
         addMove(data.aiMove);
         setBoard(data.boardAfterAI as Board);
         setBotMessage(data.botMessageAfterAI || "");
