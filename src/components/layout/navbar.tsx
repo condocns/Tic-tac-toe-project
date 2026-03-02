@@ -193,7 +193,7 @@ export function Navbar() {
                   className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 text-purple-200/70"
                 >
                   <LogOut className="h-4 w-4" />
-                  <span className="hidden lg:inline">Sign Out</span>
+                  <span className="hidden lg:inline">Log Out</span>
                 </Button>
               </motion.div>
               
@@ -214,7 +214,7 @@ export function Navbar() {
               <Link href="/login">
                 <Button size="sm" className="px-6 py-2 rounded-lg font-semibold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-0 shadow-lg shadow-purple-500/25">
                   <Sparkles className="mr-2 h-4 w-4" />
-                  Sign In
+                  Log In
                 </Button>
               </Link>
             </motion.div>
@@ -334,7 +334,7 @@ export function Navbar() {
                   className="w-full mt-3 border-purple-400/30 bg-purple-500/10 text-purple-100 hover:bg-purple-500/20"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
+                  Log Out
                 </Button>
               </motion.div>
             </div>
