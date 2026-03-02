@@ -38,8 +38,16 @@ export async function GET(req: NextRequest) {
   }
 
   // RBAC: only admin can access
-  const user = await prisma.user.findUnique({
-    where: { id: token.sub },
+  const tokenEmail = typeof token.email === "string" ? token.email : undefined;
+  
+  // Find actual user ID (handles provider ID vs database CUID mismatch)
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { id: token.sub },
+        ...(tokenEmail ? [{ email: tokenEmail }] : []),
+      ],
+    },
     select: { role: true },
   });
 

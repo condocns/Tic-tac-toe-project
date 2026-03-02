@@ -15,6 +15,13 @@ export default async function proxy(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
   
+  // Protect /admin routes
+  if (req.nextUrl.pathname.startsWith("/admin")) {
+    if (token?.role !== "admin") {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
+  }
+  
   return NextResponse.next();
 }
 
