@@ -18,15 +18,15 @@ export default async function proxy(req: NextRequest) {
   const token = await getToken({ req, secret: getRequiredEnv("AUTH_SECRET") });
   
   if (token?.sub) {
-    const isBlacklisted = await isSessionBlacklistedSafe(token.sub, 75, token.email || undefined);
-    if (isBlacklisted) {
-      // Clear session cookies and redirect to login
-      const response = NextResponse.redirect(new URL("/login", req.url));
-      response.cookies.delete("next-auth.session-token");
-      response.cookies.delete("next-auth.csrf-token");
-      response.cookies.delete("__Secure-next-auth.session-token");
-      return response;
-    }
+    // const isBlacklisted = await isSessionBlacklistedSafe(token.sub, 75, token.email || undefined);
+    // if (isBlacklisted) {
+    //   // Clear session cookies and redirect to login
+    //   const response = NextResponse.redirect(new URL("/login", req.url));
+    //   response.cookies.delete("next-auth.session-token");
+    //   response.cookies.delete("next-auth.csrf-token");
+    //   response.cookies.delete("__Secure-next-auth.session-token");
+    //   return response;
+    // }
   }
 
   const isLoggedIn = !!token;
