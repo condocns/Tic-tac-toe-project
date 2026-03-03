@@ -14,10 +14,10 @@ function LoginContent() {
   const callbackUrl = searchParams.get("callbackUrl") || "/game";
 
   useEffect(() => {
-    if (session) {
+    if (status === "authenticated" && session) {
       router.push(callbackUrl);
     }
-  }, [session, router, callbackUrl]);
+  }, [session, status, router, callbackUrl]);
 
   if (status === "loading") {
     return (
