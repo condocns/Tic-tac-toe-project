@@ -87,6 +87,58 @@ if (githubClientId && githubClientSecret) {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers,
   callbacks: {
+    async signIn({ user, account, profile }) {
+      if (!user.email || !account) return false;
+      
+      // Create user if not exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email: user.email }
+      });
+      
+      const expectedRole = isAdminEmail(user.email) ? UserRole.ADMIN : UserRole.USER;
+      
+      if (!existingUser) {
+        await prisma.user.create({
+          data: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            role: expectedRole,
+          }
+        });
+      }
+      
+      // Create account record
+      const existingAccount = await prisma.account.findUnique({
+        where: {
+          provider_providerAccountId: {
+            provider: account.provider,
+            providerAccountId: account.providerAccountId
+          }
+        }
+      });
+      
+      if (!existingAccount) {
+        await prisma.account.create({
+          data: {
+            userId: user.id!,
+            type: account.type,
+            provider: account.provider,
+            providerAccountId: account.providerAccountId,
+            refresh_token: account.refresh_token as string | null,
+            access_token: account.access_token as string | null,
+            expires_at: account.expires_at as number | null,
+            token_type: account.token_type as string | null,
+            scope: account.scope as string | null,
+            id_token: account.id_token as string | null,
+            session_state: account.session_state as string | null,
+          }
+        });
+      }
+      
+      return true;
+    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
         // Initial sign in or user object provided
