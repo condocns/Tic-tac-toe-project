@@ -17,9 +17,10 @@ interface GameState {
   moves: number[];
   gameStartTime: number | null;
   gameDuration: number;
-  resultSaved: boolean; // Prevent duplicate API calls
-  currentStreak: number; // Track winning streak for bonus points
-  bonusAwarded: boolean; // Track if bonus was awarded this game
+  resultSaved: boolean;
+  currentStreak: number;
+  bonusAwarded: boolean;
+  gameSessionId: string; // Unique ID for each game session to prevent duplicate submissions
   
   // Turn timer
   turnStartTime: number | null;
@@ -65,9 +66,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   moves: [],
   gameStartTime: null,
   gameDuration: 0,
-  resultSaved: false, // Prevent duplicate API calls
-  currentStreak: 0, // Initial streak is 0
-  bonusAwarded: false, // Initial bonus state is false
+  resultSaved: false,
+  currentStreak: 0,
+  bonusAwarded: false,
+  gameSessionId: crypto.randomUUID(),
   
   // Timer state
   turnStartTime: null,
@@ -107,12 +109,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       moves: [],
       gameStartTime: null,
       gameDuration: 0,
-      resultSaved: false, // Reset result saved flag
-      // Do NOT reset currentStreak here, it should persist across games!
-      bonusAwarded: false, // Reset bonus awarded flag for new game
+      resultSaved: false,
+      bonusAwarded: false,
       turnStartTime: null,
       timeRemaining: 20,
       isTimerActive: false,
+      gameSessionId: crypto.randomUUID(), // Generate new session ID for each game
     }),
 
   startGame: () => set({ gameStartTime: Date.now() }),

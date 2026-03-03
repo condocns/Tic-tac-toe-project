@@ -7,6 +7,8 @@ import { getClientIP } from "@/lib/utils";
 import { redis } from "@/lib/redis";
 import { gameResultSchema } from "@/lib/validations";
 import { getRequiredEnv } from "@/lib/env";
+import { checkWinner, isBoardFull, type Player, type Board } from "@/lib/game/logic";
+import { BOARD_CONFIGS } from "@/constants";
 
 export async function POST(req: NextRequest) {
   const isDev = process.env.NODE_ENV === "development";
@@ -63,8 +65,70 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    const { result, difficulty, moves, duration } = validationResult.data;
+    const { result, difficulty, moves, duration, gridSize, finalBoard, gameSessionId } = validationResult.data;
     const tokenEmail = typeof token.email === "string" ? token.email : undefined;
+
+    // Security: Prevent duplicate submissions using session ID
+    const sessionKey = `game_session:${token.sub}:${gameSessionId}`;
+    if (redis) {
+      const existingSession = await redis.get(sessionKey);
+      if (existingSession) {
+        logSecurityEvent.duplicateSubmission(req, {
+          endpoint: "/api/game/result",
+          userId: token.sub,
+          gameSessionId,
+        });
+        return NextResponse.json(
+          { error: "Game result already submitted for this session" },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Security: Verify result from board state to prevent cheating
+    const boardConfig = BOARD_CONFIGS[gridSize];
+    const expectedBoardSize = boardConfig.size;
+    
+    if (finalBoard.length !== expectedBoardSize) {
+      logSecurityEvent.invalidInput(req, { 
+        endpoint: "/api/game/result", 
+        reason: "Invalid board size in finalBoard",
+        expected: expectedBoardSize,
+        received: finalBoard.length
+      });
+      return NextResponse.json(
+        { error: "Invalid board state: size mismatch" }, 
+        { status: 400 }
+      );
+    }
+
+    // Calculate actual result from board
+    const { winner } = checkWinner(finalBoard, gridSize);
+    const isFull = isBoardFull(finalBoard);
+    
+    let computedResult: "win" | "loss" | "draw";
+    if (winner) {
+      computedResult = winner === "X" ? "win" : "loss"; // Human is always X in this validation
+    } else if (isFull) {
+      computedResult = "draw";
+    } else {
+      computedResult = "loss"; // Should not happen - incomplete board
+    }
+
+    // Verify claimed result matches computed result
+    if (result !== computedResult) {
+      logSecurityEvent.cheatAttempt(req, {
+        endpoint: "/api/game/result",
+        userId: token.sub,
+        claimedResult: result,
+        computedResult,
+        board: finalBoard,
+      });
+      return NextResponse.json(
+        { error: "Result verification failed. Possible cheating detected." }, 
+        { status: 403 }
+      );
+    }
     
     if (isDev) {
       console.log("📊 Request data:", { result, difficulty, moves, duration, userId: token.sub });
@@ -151,6 +215,15 @@ export async function POST(req: NextRequest) {
         scoreChange: updatedUser.scoreChange,
         bonusAwarded: updatedUser.bonusAwarded
       });
+    }
+
+    // Mark session as processed to prevent duplicate submissions
+    if (redis) {
+      try {
+        await redis.set(sessionKey, "1", { ex: 3600 }); // Expire after 1 hour
+      } catch (error) {
+        console.error("Failed to mark session:", error);
+      }
     }
 
     // Clear leaderboard cache to show updated scores immediately

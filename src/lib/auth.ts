@@ -16,44 +16,53 @@ const githubClientId = getOptionalEnv("AUTH_GITHUB_ID");
 const githubClientSecret = getOptionalEnv("AUTH_GITHUB_SECRET");
 
 const providers: Provider[] = [
-  Credentials({
-    name: "Credentials",
-    credentials: {
-      email: { label: "Email", type: "email" },
-      password: { label: "Password", type: "password" }
-    },
-    async authorize(credentials) {
-      if (!credentials?.email || !credentials?.password) {
-        return null;
-      }
-
-      const user = await prisma.user.findUnique({
-        where: { email: credentials.email as string }
-      });
-
-      if (!user || !user.password) {
-        return null;
-      }
-
-      const isPasswordValid = await bcrypt.compare(
-        credentials.password as string,
-        user.password
-      );
-
-      if (!isPasswordValid) {
-        return null;
-      }
-
-      return {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        image: user.image,
-        role: user.role,
-      };
-    }
-  })
+  // Credentials provider disabled for security - OAuth 2.0 only
+  // To enable: uncomment the provider below and add CREDENTIALS_ENABLED=true to env
 ];
+
+const credentialsEnabled = getOptionalEnv("CREDENTIALS_ENABLED") === "true";
+
+if (credentialsEnabled) {
+  providers.push(
+    Credentials({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email as string }
+        });
+
+        if (!user || !user.password) {
+          return null;
+        }
+
+        const isPasswordValid = await bcrypt.compare(
+          credentials.password as string,
+          user.password
+        );
+
+        if (!isPasswordValid) {
+          return null;
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+          role: user.role,
+        };
+      }
+    })
+  );
+}
 
 if (googleClientId && googleClientSecret) {
   providers.unshift(

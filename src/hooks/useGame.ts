@@ -25,6 +25,7 @@ export function useGame() {
     moves,
     resultSaved,
     currentStreak,
+    gameSessionId,
     addMove,
     setBoard,
     setIsAiThinking,
@@ -51,6 +52,7 @@ export function useGame() {
       moves: state.moves,
       resultSaved: state.resultSaved,
       currentStreak: state.currentStreak,
+      gameSessionId: state.gameSessionId,
       addMove: state.addMove,
       setBoard: state.setBoard,
       setIsAiThinking: state.setIsAiThinking,
@@ -88,6 +90,9 @@ export function useGame() {
       difficulty: string;
       moves: number[];
       duration: number;
+      gridSize: string;
+      finalBoard: (string | null)[];
+      gameSessionId: string;
     }) => gameApi.saveResult(data),
     retry: 0,
   });
@@ -137,6 +142,9 @@ export function useGame() {
         difficulty,
         moves,
         duration,
+        gridSize,
+        finalBoard: board,
+        gameSessionId,
       }) as any;
       console.log("✅ Save result successful", response);
       
@@ -198,7 +206,7 @@ export function useGame() {
       // Reset flag on error so it can be retried
       setResultSaved(false);
     }
-  }, [resultSaved, difficulty, moves, saveResultMutation, setResultSaved, queryClient, currentStreak, setCurrentStreak, setBonusAwarded]);
+  }, [resultSaved, difficulty, moves, board, gridSize, gameSessionId, saveResultMutation, setResultSaved, queryClient, currentStreak, setCurrentStreak, setBonusAwarded]);
 
   const handleTimeExpired = useCallback(() => {
     // Note: Store's handleTimeExpired handles the state updates

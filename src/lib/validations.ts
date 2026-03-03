@@ -49,8 +49,11 @@ export const leaderboardQuerySchema = paginationSchema.extend({
 export const gameResultSchema = z.object({
   result: z.enum(["win", "loss", "draw"]),
   difficulty: z.enum(["easy", "medium", "hard"]),
-  moves: z.array(z.number().min(0).max(24)).max(25), // max 5x5 board = 25 moves
-  duration: z.number().min(0).max(3600), // Max 1 hour
+  moves: z.array(z.number().min(0).max(24)).max(25),
+  duration: z.number().min(0).max(3600),
+  gridSize: z.enum(["3x3", "4x4", "5x5"]).default("3x3"),
+  finalBoard: z.array(z.enum(["X", "O"]).nullable()).min(1),
+  gameSessionId: z.string().uuid(),
 });
 
 // User Registration schema
