@@ -38,3 +38,14 @@ export const getRequiredRedis = (): Redis => {
   }
   return redis;
 };
+
+// Safe Redis operation wrapper with error handling
+export async function safeRedisOperation<T>(operation: () => Promise<T>, errorMessage: string): Promise<T | null> {
+  if (!redis) return null;
+  try {
+    return await operation();
+  } catch (error) {
+    console.error(errorMessage, error);
+    return null;
+  }
+}

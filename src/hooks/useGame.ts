@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
+import { logDev } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useGameStore } from "@/lib/game/store";
 import { useShallow } from "zustand/react/shallow";
@@ -105,10 +106,10 @@ export function useGame() {
       ? Math.max(1, Math.floor((Date.now() - gameStartTime) / 1000))
       : 0;
 
-    console.log("🎮 saveGameResult called:", { result, resultSaved, difficulty, moves, duration });
+    logDev("🎮 saveGameResult called:", { result, resultSaved, difficulty, moves, duration });
     
     if (resultSaved || !result) {
-      console.log("❌ Skipping save - result already saved or no result");
+      logDev("❌ Skipping save - result already saved or no result");
       return; // Prevent duplicate calls
     }
     
@@ -137,7 +138,7 @@ export function useGame() {
     setResultSaved(true);
     
     try {
-      console.log("📤 Calling saveResult API...", {
+      logDev("📤 Calling save result API...", {
         result,
         difficulty,
         moves,
@@ -157,19 +158,18 @@ export function useGame() {
         gameSessionId,
         humanPlayer,
       }) as any;
-      console.log("✅ Save result successful", response);
+      logDev("✅ Save result successful", response);
       
       // Update with real streak from server if available
       // The server resets streak after 3 wins, so we need to capture that
-      // but if we just got a bonus, we don't want to overwrite our local 
-      // newStreak=3 until the next game starts, so the message stays up
+      // But only sync if we didn't just award a bonus (to avoid UI flicker)
       if (response && response.currentStreak !== undefined && !newBonusAwarded) {
         setCurrentStreak(response.currentStreak);
       }
       
       // Invalidate user stats query to refresh the data
       queryClient.invalidateQueries({ queryKey: ["userStats"] });
-      console.log("🔄 User stats query invalidated");
+      logDev("🔄 User stats query invalidated");
       
       // Optimistically update stats
       queryClient.setQueryData<UserStats>(["userStats"], (oldStats) => {
@@ -194,7 +194,7 @@ export function useGame() {
         }
         
         updatedStats.gamesPlayed += 1;
-        console.log("⚡ Optimistically updated user stats via React Query:", updatedStats);
+        logDev("⚡ Optimistically updated user stats via React Query:", updatedStats);
         
         return updatedStats;
       });
@@ -213,7 +213,7 @@ export function useGame() {
         window.dispatchEvent(new Event("adminPlayersInvalidate"));
       }
     } catch (error) {
-      console.error("❌ Failed to save game result:", error);
+      logDev("❌ Failed to save game result:", error);
       // Reset flag on error so it can be retried
       setResultSaved(false);
     }
@@ -331,7 +331,7 @@ export function useGame() {
           await saveGameResult(data.gameResultAfterAI as GameResult);
         }
       } catch (error) {
-        console.error("Failed to make move:", error);
+        logDev("Failed to make move:", error);
       }
     },
     [
