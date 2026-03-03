@@ -148,7 +148,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const expectedRole = user.email && isAdminEmail(user.email) ? UserRole.ADMIN : UserRole.USER;
         
         // Clear blacklist on new login
-        if (user.email) {
+        if (user.email && user.id) {
           const { clearSessionBlacklist } = await import("@/lib/session-blacklist");
           await clearSessionBlacklist(user.id, user.email);
         }
