@@ -8,7 +8,7 @@ import { isSessionBlacklistedSafe } from "@/lib/session-blacklist";
 export default async function proxy(req: NextRequest) {
   const isPublicRoute = ["/", "/login", "/api/health"].some(route => 
     req.nextUrl.pathname === route
-  );
+  ) || req.nextUrl.pathname.startsWith("/api/auth/");
 
   if (isPublicRoute) {
     return NextResponse.next();
