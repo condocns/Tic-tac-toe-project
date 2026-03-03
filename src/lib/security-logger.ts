@@ -8,7 +8,11 @@ export type SecurityEvent =
   | "SUSPICIOUS_ACTIVITY"
   | "ADMIN_ACCESS"
   | "AUTH_FAILURE"
-  | "VALIDATION_ERROR";
+  | "VALIDATION_ERROR"
+  | "CHEAT_ATTEMPT"
+  | "INVALID_INPUT"
+  | "DUPLICATE_SUBMISSION"
+  | "SESSION_REVOKED";
 
 // Security log entry
 interface SecurityLogEntry {
@@ -119,6 +123,46 @@ class SecurityLogger {
     });
   }
 
+  public logInvalidInput(request: NextRequest, details: Record<string, any> = {}): void {
+    this.log({
+      event: "INVALID_INPUT",
+      ip: this.getClientIP(request),
+      userAgent: request.headers.get("user-agent") || undefined,
+      endpoint: request.nextUrl.pathname,
+      details,
+    });
+  }
+
+  public logCheatAttempt(request: NextRequest, details: Record<string, any> = {}): void {
+    this.log({
+      event: "CHEAT_ATTEMPT",
+      ip: this.getClientIP(request),
+      userAgent: request.headers.get("user-agent") || undefined,
+      endpoint: request.nextUrl.pathname,
+      details,
+    });
+  }
+
+  public logDuplicateSubmission(request: NextRequest, details: Record<string, any> = {}): void {
+    this.log({
+      event: "DUPLICATE_SUBMISSION",
+      ip: this.getClientIP(request),
+      userAgent: request.headers.get("user-agent") || undefined,
+      endpoint: request.nextUrl.pathname,
+      details,
+    });
+  }
+
+  public logSessionRevoked(request: NextRequest, details: Record<string, any> = {}): void {
+    this.log({
+      event: "SESSION_REVOKED",
+      ip: this.getClientIP(request),
+      userAgent: request.headers.get("user-agent") || undefined,
+      endpoint: request.nextUrl.pathname,
+      details,
+    });
+  }
+
   public getRecentLogs(count: number = 50): SecurityLogEntry[] {
     return this.logs.slice(-count);
   }
@@ -161,4 +205,16 @@ export const logSecurityEvent = {
     
   suspiciousActivity: (request: NextRequest, details: Record<string, any>) =>
     securityLogger.logSuspiciousActivity(request, details),
+    
+  invalidInput: (request: NextRequest, details?: Record<string, any>) =>
+    securityLogger.logInvalidInput(request, details),
+    
+  cheatAttempt: (request: NextRequest, details?: Record<string, any>) =>
+    securityLogger.logCheatAttempt(request, details),
+
+  duplicateSubmission: (request: NextRequest, details?: Record<string, any>) =>
+    securityLogger.logDuplicateSubmission(request, details),
+
+  sessionRevoked: (request: NextRequest, details?: Record<string, any>) =>
+    securityLogger.logSessionRevoked(request, details),
 };

@@ -13,3 +13,9 @@ export const getRuntimeConfig = () => {
     }
   };
 };
+
+// Game-related constants
+export const GAME_CONFIG = {
+  SESSION_EXPIRY: 3600, // 1 hour in seconds
+  LEADERBOARD_CACHE_PATTERN: "leaderboard:*",
+} as const;

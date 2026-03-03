@@ -16,44 +16,53 @@ const githubClientId = getOptionalEnv("AUTH_GITHUB_ID");
 const githubClientSecret = getOptionalEnv("AUTH_GITHUB_SECRET");
 
 const providers: Provider[] = [
-  Credentials({
-    name: "Credentials",
-    credentials: {
-      email: { label: "Email", type: "email" },
-      password: { label: "Password", type: "password" }
-    },
-    async authorize(credentials) {
-      if (!credentials?.email || !credentials?.password) {
-        return null;
-      }
-
-      const user = await prisma.user.findUnique({
-        where: { email: credentials.email as string }
-      });
-
-      if (!user || !user.password) {
-        return null;
-      }
-
-      const isPasswordValid = await bcrypt.compare(
-        credentials.password as string,
-        user.password
-      );
-
-      if (!isPasswordValid) {
-        return null;
-      }
-
-      return {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        image: user.image,
-        role: user.role,
-      };
-    }
-  })
+  // Credentials provider disabled for security - OAuth 2.0 only
+  // To enable: uncomment the provider below and add CREDENTIALS_ENABLED=true to env
 ];
+
+const credentialsEnabled = getOptionalEnv("CREDENTIALS_ENABLED") === "true";
+
+if (credentialsEnabled) {
+  providers.push(
+    Credentials({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email as string }
+        });
+
+        if (!user || !user.password) {
+          return null;
+        }
+
+        const isPasswordValid = await bcrypt.compare(
+          credentials.password as string,
+          user.password
+        );
+
+        if (!isPasswordValid) {
+          return null;
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+          role: user.role,
+        };
+      }
+    })
+  );
+}
 
 if (googleClientId && googleClientSecret) {
   providers.unshift(
@@ -78,6 +87,58 @@ if (githubClientId && githubClientSecret) {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers,
   callbacks: {
+    async signIn({ user, account, profile }) {
+      if (!user.email || !account) return false;
+      
+      // Create user if not exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email: user.email }
+      });
+      
+      const expectedRole = isAdminEmail(user.email) ? UserRole.ADMIN : UserRole.USER;
+      
+      if (!existingUser) {
+        await prisma.user.create({
+          data: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            role: expectedRole,
+          }
+        });
+      }
+      
+      // Create account record
+      const existingAccount = await prisma.account.findUnique({
+        where: {
+          provider_providerAccountId: {
+            provider: account.provider,
+            providerAccountId: account.providerAccountId
+          }
+        }
+      });
+      
+      if (!existingAccount) {
+        await prisma.account.create({
+          data: {
+            userId: user.id!,
+            type: account.type,
+            provider: account.provider,
+            providerAccountId: account.providerAccountId,
+            refresh_token: account.refresh_token as string | null,
+            access_token: account.access_token as string | null,
+            expires_at: account.expires_at as number | null,
+            token_type: account.token_type as string | null,
+            scope: account.scope as string | null,
+            id_token: account.id_token as string | null,
+            session_state: account.session_state as string | null,
+          }
+        });
+      }
+      
+      return true;
+    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
         // Initial sign in or user object provided
@@ -85,6 +146,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         
         // Auto-assign admin role if email is in ADMIN_EMAILS
         const expectedRole = user.email && isAdminEmail(user.email) ? UserRole.ADMIN : UserRole.USER;
+        
+        // Clear blacklist on new login
+        if (user.email) {
+          const { clearSessionBlacklist } = await import("@/lib/session-blacklist");
+          await clearSessionBlacklist(user.id, user.email);
+        }
         
         // For OAuth users, create/update user in DB asynchronously
         if (user.email && !('password' in user)) {
@@ -106,12 +173,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
         
         token.role = expectedRole;
+        token.email = user.email;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.sub) {
-        const isBlacklisted = await isSessionBlacklistedSafe(token.sub);
+        const isBlacklisted = await isSessionBlacklistedSafe(token.sub, 75, token.email || undefined);
         if (isBlacklisted) {
           throw new Error("Session revoked");
         }

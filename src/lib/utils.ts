@@ -6,6 +6,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Development logging utility
+export function logDev(message: string, data?: any) {
+  if (process.env.NODE_ENV === "development") {
+    console.log(message, data);
+  }
+}
+
 // Security utility functions
 export function isAdminEmail(email: string): boolean {
   const adminEmails = process.env.ADMIN_EMAILS?.split(",").map(e => e.trim().toLowerCase()) || [];
