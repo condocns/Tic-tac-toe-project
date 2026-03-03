@@ -10,6 +10,7 @@ import { Shield, Users, Gamepad2, BarChart3, Search, ChevronLeft, ChevronRight, 
 import { cn } from "@/lib/utils";
 import { PageLoading } from "@/components/ui/page-loading";
 import { NavigationLoading, PageTransition } from "@/components/ui/navigation-loading";
+import { useSessionValidator } from "@/hooks/useSessionValidator";
 
 interface Player {
   id: string;
@@ -35,6 +36,10 @@ interface AdminData {
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
+  
+  // Auto-logout if session is revoked
+  useSessionValidator();
+  
   const [data, setData] = useState<AdminData | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");

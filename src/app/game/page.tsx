@@ -38,6 +38,13 @@ export default function GamePage() {
     });
   }, [resetGame, startGame, setBotMessage]);
 
+  // Handle redirect when session is not available
+  useEffect(() => {
+    if (!session && status !== "loading") {
+      router.replace("/login?callbackUrl=/game");
+    }
+  }, [session, status, router]);
+
   // 2026 Standard: ตรวจสอบ session state อย่างเดียว (ไม่ต้อง mounted state)
   if (status === "loading") {
     return (
@@ -48,8 +55,7 @@ export default function GamePage() {
   }
 
   if (!session) {
-    // 2026 Standard: ใช้ navigate แทน router.push สำหรับ better UX
-    router.replace("/login?callbackUrl=/game");
+    // Session check and redirect handled by useEffect above
     return null;
   }
 

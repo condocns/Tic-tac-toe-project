@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. Revoke session
-    await blacklistSession(userId);
+    await blacklistSession(userId, targetUser.email || undefined);
 
     // 7. Log security event
     logSecurityEvent.sessionRevoked(req, {

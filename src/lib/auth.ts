@@ -95,6 +95,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Auto-assign admin role if email is in ADMIN_EMAILS
         const expectedRole = user.email && isAdminEmail(user.email) ? UserRole.ADMIN : UserRole.USER;
         
+        // Clear blacklist on new login
+        if (user.email) {
+          const { clearSessionBlacklist } = await import("@/lib/session-blacklist");
+          await clearSessionBlacklist(user.id, user.email);
+        }
+        
         // For OAuth users, create/update user in DB asynchronously
         if (user.email && !('password' in user)) {
           prisma.user.upsert({
@@ -115,12 +121,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
         
         token.role = expectedRole;
+        token.email = user.email;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.sub) {
-        const isBlacklisted = await isSessionBlacklistedSafe(token.sub);
+        const isBlacklisted = await isSessionBlacklistedSafe(token.sub, 75, token.email || undefined);
         if (isBlacklisted) {
           throw new Error("Session revoked");
         }
