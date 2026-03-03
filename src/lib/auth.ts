@@ -84,6 +84,18 @@ if (githubClientId && githubClientSecret) {
   );
 }
 
+// Debug: Check what providers are available
+console.log("Debug - Available environment variables:", {
+  googleClientId: !!googleClientId,
+  googleClientSecret: !!googleClientSecret,
+  githubClientId: !!githubClientId,
+  githubClientSecret: !!githubClientSecret,
+  credentialsEnabled
+});
+
+console.log("Debug - Providers array before:", providers.length);
+console.log("Debug - Providers array contents:", providers);
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers,
   callbacks: {
