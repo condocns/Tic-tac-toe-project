@@ -93,6 +93,7 @@ export function useGame() {
       gridSize: string;
       finalBoard: (string | null)[];
       gameSessionId: string;
+      humanPlayer: string;
     }) => gameApi.saveResult(data),
     retry: 0,
   });
@@ -136,7 +137,16 @@ export function useGame() {
     setResultSaved(true);
     
     try {
-      console.log("📤 Calling saveResult API...");
+      console.log("📤 Calling saveResult API...", {
+        result,
+        difficulty,
+        moves,
+        duration,
+        gridSize,
+        finalBoard: board,
+        gameSessionId,
+        humanPlayer,
+      });
       const response = await saveResultMutation.mutateAsync({
         result,
         difficulty,
@@ -145,6 +155,7 @@ export function useGame() {
         gridSize,
         finalBoard: board,
         gameSessionId,
+        humanPlayer,
       }) as any;
       console.log("✅ Save result successful", response);
       
@@ -206,7 +217,7 @@ export function useGame() {
       // Reset flag on error so it can be retried
       setResultSaved(false);
     }
-  }, [resultSaved, difficulty, moves, board, gridSize, gameSessionId, saveResultMutation, setResultSaved, queryClient, currentStreak, setCurrentStreak, setBonusAwarded]);
+  }, [resultSaved, difficulty, moves, board, gridSize, gameSessionId, humanPlayer, saveResultMutation, setResultSaved, queryClient, currentStreak, setCurrentStreak, setBonusAwarded]);
 
   const handleTimeExpired = useCallback(() => {
     // Note: Store's handleTimeExpired handles the state updates

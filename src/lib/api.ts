@@ -82,6 +82,7 @@ export const gameApi = {
     gridSize?: string;
     finalBoard: (string | null)[];
     gameSessionId: string;
+    humanPlayer?: string;
   }) => apiClient.post(API_ENDPOINTS.GAME_RESULT, data, 0),
 
   getHistory: (page = 1, limit = 10) =>

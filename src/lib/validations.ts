@@ -54,6 +54,7 @@ export const gameResultSchema = z.object({
   gridSize: z.enum(["3x3", "4x4", "5x5"]).default("3x3"),
   finalBoard: z.array(z.enum(["X", "O"]).nullable()).min(1),
   gameSessionId: z.string().uuid(),
+  humanPlayer: z.enum(["X", "O"]).default("X"),
 });
 
 // User Registration schema
