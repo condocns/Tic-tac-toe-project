@@ -11,7 +11,8 @@ export type SecurityEvent =
   | "VALIDATION_ERROR"
   | "CHEAT_ATTEMPT"
   | "INVALID_INPUT"
-  | "DUPLICATE_SUBMISSION";
+  | "DUPLICATE_SUBMISSION"
+  | "SESSION_REVOKED";
 
 // Security log entry
 interface SecurityLogEntry {
@@ -152,6 +153,16 @@ class SecurityLogger {
     });
   }
 
+  public logSessionRevoked(request: NextRequest, details: Record<string, any> = {}): void {
+    this.log({
+      event: "SESSION_REVOKED",
+      ip: this.getClientIP(request),
+      userAgent: request.headers.get("user-agent") || undefined,
+      endpoint: request.nextUrl.pathname,
+      details,
+    });
+  }
+
   public getRecentLogs(count: number = 50): SecurityLogEntry[] {
     return this.logs.slice(-count);
   }
@@ -203,4 +214,7 @@ export const logSecurityEvent = {
 
   duplicateSubmission: (request: NextRequest, details?: Record<string, any>) =>
     securityLogger.logDuplicateSubmission(request, details),
+
+  sessionRevoked: (request: NextRequest, details?: Record<string, any>) =>
+    securityLogger.logSessionRevoked(request, details),
 };

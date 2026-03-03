@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback, useTransition } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Shield, Users, Gamepad2, BarChart3, Search, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
+import { Shield, Users, Gamepad2, BarChart3, Search, ChevronLeft, ChevronRight, ArrowUpDown, Ban, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageLoading } from "@/components/ui/page-loading";
 import { NavigationLoading, PageTransition } from "@/components/ui/navigation-loading";
@@ -44,6 +44,7 @@ export default function AdminPage() {
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [revokingUserId, setRevokingUserId] = useState<string | null>(null);
   
   // 2026 Standard: ใช้ useTransition สำหรับ non-urgent navigation
   const [isPending, startTransition] = useTransition();
@@ -129,6 +130,37 @@ export default function AdminPage() {
       }
     });
   }, []);
+
+  const revokeSession = async (userId: string, userName: string) => {
+    if (!confirm(`Are you sure you want to revoke session for ${userName}? This will force them to logout immediately.`)) {
+      return;
+    }
+
+    setRevokingUserId(userId);
+    try {
+      const res = await fetch('/api/admin/revoke-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        alert(`Session revoked: ${result.message}`);
+        // Clear cache and refresh data
+        clearCache();
+        fetchPlayers();
+      } else {
+        const error = await res.json();
+        alert(`Failed to revoke session: ${error.error}`);
+      }
+    } catch (error) {
+      alert('Failed to revoke session. Please try again.');
+      console.error('Revoke session error:', error);
+    } finally {
+      setRevokingUserId(null);
+    }
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -236,7 +268,7 @@ export default function AdminPage() {
         </CardHeader>
         <CardContent>
           {/* Table header */}
-          <div className="hidden sm:grid grid-cols-[1fr_80px_80px_80px_80px_100px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b mb-2">
+          <div className="hidden sm:grid grid-cols-[1fr_80px_80px_80px_80px_100px_120px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b mb-2">
             <span>Player</span>
             <button className="flex items-center gap-1 hover:text-foreground" onClick={() => toggleSort("score")}>
               Score <ArrowUpDown className="h-3 w-3" />
@@ -251,6 +283,7 @@ export default function AdminPage() {
             <button className="flex items-center gap-1 hover:text-foreground" onClick={() => toggleSort("gamesPlayed")}>
               Games <ArrowUpDown className="h-3 w-3" />
             </button>
+            <span>Actions</span>
           </div>
 
           {loading && !data ? (
@@ -259,11 +292,16 @@ export default function AdminPage() {
             </div>
           ) : (
             <div className="space-y-1">
-              {data?.players.map((player) => (
+              {data?.players.map((player) => {
+                // Debug: Check if emails match (more reliable than ID for OAuth users)
+                const isCurrentUser = player.email === session?.user?.email;
+                console.log('Player Email:', player.email, 'Session Email:', session?.user?.email, 'Is current user:', isCurrentUser);
+                
+                return (
                 <div
                   key={player.id}
                   className={cn(
-                    "grid grid-cols-1 sm:grid-cols-[1fr_80px_80px_80px_80px_100px] gap-2 items-center rounded-lg px-3 py-2.5 hover:bg-muted/50",
+                    "grid grid-cols-1 sm:grid-cols-[1fr_80px_80px_80px_80px_100px_120px] gap-2 items-center rounded-lg px-3 py-2.5 hover:bg-muted/50",
                     player.role === "admin" && "bg-primary/5"
                   )}
                 >
@@ -288,14 +326,64 @@ export default function AdminPage() {
                     <span>{player.wins}W / {player.losses}L</span>
                     <span>Streak: {player.currentStreak}</span>
                   </div>
+                  {/* Mobile: Revoke button */}
+                  <div className="flex sm:hidden justify-end pl-9">
+                    {isCurrentUser ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => signOut()}
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <LogOut className="h-3 w-3 mr-1" />
+                        Logout
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => revokeSession(player.id, player.name || player.email || 'Unknown')}
+                        disabled={revokingUserId === player.id}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Ban className="h-3 w-3 mr-1" />
+                        {revokingUserId === player.id ? '...' : 'Revoke'}
+                      </Button>
+                    )}
+                  </div>
                   {/* Desktop columns */}
                   <p className="hidden sm:block text-sm font-bold">{player.score}</p>
                   <p className="hidden sm:block text-sm text-green-500">{player.wins}</p>
                   <p className="hidden sm:block text-sm text-red-500">{player.losses}</p>
                   <p className="hidden sm:block text-sm">{player.currentStreak}/{player.bestStreak}</p>
                   <p className="hidden sm:block text-sm text-muted-foreground">{player.gamesPlayed}</p>
+                  <div className="hidden sm:block">
+                    {isCurrentUser ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => signOut()}
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <LogOut className="h-3 w-3 mr-1" />
+                        Logout
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => revokeSession(player.id, player.name || player.email || 'Unknown')}
+                        disabled={revokingUserId === player.id}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Ban className="h-3 w-3 mr-1" />
+                        {revokingUserId === player.id ? 'Revoking...' : 'Revoke'}
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
