@@ -61,7 +61,8 @@ tic-tac-toe-project/
 │   │   │   ├── user/                 # User APIs
 │   │   │   │   └── stats/            # User statistics
 │   │   │   ├── admin/                # Admin APIs
-│   │   │   │   └── players/          # Player management
+│   │   │   │   ├── players/          # Player management
+│   │   │   │   └── revoke-session/   # Session revocation
 │   │   │   ├── leaderboard/          # Leaderboard with caching
 │   │   │   └── health/               # Health check
 │   │   ├── admin/                    # Admin dashboard page
@@ -77,16 +78,26 @@ tic-tac-toe-project/
 │   │   │   ├── game-board.tsx        # Interactive game board
 │   │   │   ├── game-info.tsx          # Game status & bot messages
 │   │   │   ├── game-controls.tsx     # Difficulty selector & reset
-│   │   │   └── match-replay.tsx       # Game replay component
+│   │   │   ├── match-replay.tsx       # Game replay component
+│   │   │   ├── stats-display.tsx     # Real-time game statistics
+│   │   │   └── turn-timer.tsx         # Turn timer with visual indicators
 │   │   ├── layout/                   # Layout components
 │   │   │   ├── navbar.tsx            # Navigation bar
-│   │   │   └── theme-toggle.tsx      # Dark/light mode toggle
+│   │   │   ├── theme-toggle.tsx      # Dark/light mode toggle
+│   │   │   └── navigation-loading.tsx # Loading states for navigation
 │   │   ├── providers/                # Context providers
-│   │   │   └── session-provider.tsx # NextAuth session provider
+│   │   │   ├── session-provider.tsx # NextAuth session provider
+│   │   │   └── query-provider.tsx   # React Query provider
 │   │   └── ui/                       # ShadCN UI components
 │   │       ├── button.tsx
 │   │       ├── card.tsx
 │   │       ├── avatar.tsx
+│   │       ├── input.tsx
+│   │       ├── label.tsx
+│   │       ├── tabs.tsx
+│   │       ├── loading-spinner.tsx
+│   │       ├── page-loading.tsx
+│   │       ├── animated-particles.tsx
 │   │       └── ...
 │   ├── lib/                          # Utility libraries
 │   │   ├── api.ts                    # API client with error handling & retries
@@ -98,13 +109,22 @@ tic-tac-toe-project/
 │   │   ├── auth.ts                   # Auth.js v5 configuration
 │   │   ├── prisma.ts                 # Prisma client singleton
 │   │   ├── redis.ts                  # Redis client singleton
+│   │   ├── memory-cache.ts           # In-memory cache for performance
+│   │   ├── session-blacklist.ts      # Session management & blacklist
+│   │   ├── security-logger.ts        # Security event logging
+│   │   ├── rate-limit.ts             # Advanced rate limiting
+│   │   ├── validations.ts            # Zod validation schemas
+│   │   ├── config.ts                 # App configuration
+│   │   ├── env.ts                    # Environment variable validation
 │   │   └── utils.ts                  # Utility functions (cn, etc.)
 │   ├── hooks/                        # Custom React hooks
 │   │   ├── useAuth.ts                # Authentication state management
 │   │   ├── useGame.ts                # Game state & board management
 │   │   ├── useGameHistory.ts         # Match history fetching
 │   │   ├── useLeaderboard.ts         # Leaderboard data & pagination
-│   │   └── useUserStats.ts           # User statistics & performance
+│   │   ├── useUserStats.ts           # User statistics & performance
+│   │   ├── useTurnTimer.ts           # Turn timer functionality
+│   │   └── useSessionValidator.ts    # Session validation
 │   ├── constants/                    # Application constants
 │   │   └── index.ts                  # API endpoints, game constants
 │   ├── types/                        # TypeScript type definitions
@@ -243,7 +263,7 @@ model User {
   email         String    @unique
   name          String?
   image         String?
-  role          String    @default("user")
+  role          Role      @default(USER)
   score         Int       @default(0)
   wins          Int       @default(0)
   losses        Int       @default(0)
@@ -258,19 +278,61 @@ model User {
   accounts      Account[]
   sessions      Session[]
   games         Game[]
+  
+  // Indexes
+  @@index([email])
+  @@index([score(sort: Desc)])
+  @@index([role])
 }
 
 model Game {
-  id         String   @id @default(cuid())
-  userId     String
-  result     String   // "win" | "loss" | "draw"
-  difficulty String   // "easy" | "hard"
-  moves      String   // JSON array of move indices
-  duration   Int      // Game duration in seconds
-  createdAt  DateTime @default(now())
+  id            String     @id @default(cuid())
+  userId        String
+  result        GameResult
+  difficulty    Difficulty
+  moves         Int[]      // PostgreSQL array type
+  duration      Int        // Game duration in seconds
+  gridSize      GridSize   @default(THREE_X_THREE)
+  finalBoard    String[]   // JSON array of board state
+  gameSessionId String     @unique @default(cuid())
+  humanPlayer   Player     @default(X)
+  createdAt     DateTime   @default(now())
   
   // Relations
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Indexes
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([difficulty, result])
+}
+
+// Enums for type safety
+enum Role {
+  USER
+  ADMIN
+}
+
+enum GameResult {
+  WIN
+  LOSS
+  DRAW
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum GridSize {
+  THREE_X_THREE
+  FOUR_X_FOUR
+  FIVE_X_FIVE
+}
+
+enum Player {
+  X
+  O
 }
 
 // NextAuth.js models
@@ -297,6 +359,7 @@ model VerificationToken { ... }
 
 ### Admin APIs
 - `GET /api/admin/players` — All player data (RBAC protected)
+- `POST /api/admin/revoke-session` — Revoke user session (blacklist)
 
 ### Health
 - `GET /api/health` — Service health check with DB latency
@@ -335,20 +398,59 @@ interface GameState {
 - **OAuth 2.0** via Auth.js v5 (Google/GitHub)
 - **Database Sessions** (not JWT)
 - **Middleware Protection** for all protected routes
+- **Session Blacklist** with instant revocation capability
 
 ### 2. Authorization
 - **Role-Based Access Control (RBAC)**
 - **Admin-only endpoints** with role validation
 - **Session augmentation** for user.id and user.role
 
-### 3. Data Integrity
+### 3. Session Management
+```mermaid
+flowchart TD
+    A[User Action] --> B{Session Valid?}
+    B -->|Yes| C[Check Memory Cache]
+    C --> D{Cached?}
+    D -->|Yes| E[Allow Access]
+    D -->|No| F[Check Redis]
+    F --> G{Valid in Redis?}
+    G -->|Yes| H[Update Memory Cache]
+    G -->|No| I[Deny Access]
+    H --> E
+    B -->|No| J[Deny Access]
+    I --> K[Log Security Event]
+    J --> K
+```
+
+### 4. Data Integrity
 - **Prisma Transactions** for atomic score updates
 - **Server-side AI** prevents client-side cheating
-- **Input validation** on all API endpoints
+- **Input validation** on all API endpoints (Zod schemas)
+- **Type safety** throughout the application
 
-### 4. Rate Limiting
-- **Upstash Redis** rate limiting (100 req/min per user)
-- **API route protection** against abuse
+### 5. Advanced Rate Limiting
+```mermaid
+flowchart TD
+    A[API Request] --> B[Identify Endpoint Type]
+    B --> C{Endpoint Type?}
+    C -->|Admin| D[60 req/min]
+    C -->|Game| E[10 req/10s]
+    C -->|Auth| F[5 req/min]
+    C -->|General| G[100 req/min]
+    D --> H{Within Limit?}
+    E --> H
+    F --> H
+    G --> H
+    H -->|Yes| I[Process Request]
+    H -->|No| J[Log Rate Limit Exceeded]
+    J --> K[Return 429 Error]
+```
+
+### 6. Security Logging
+- **Event Types**: Rate limiting, unauthorized access, suspicious activity, admin access
+- **Structured Logging**: IP, user agent, endpoint, timestamp, details
+- **Memory Storage**: Last 1000 events for monitoring
+- **Development Visibility**: Console warnings in development mode
 
 ## Performance Optimizations
 
@@ -356,16 +458,41 @@ interface GameState {
 - **Connection Pooling** via Prisma
 - **Atomic Transactions** minimize round trips
 - **Selective Queries** with specific field selection
+- **Compound Indexes** for leaderboard queries
 
-### 2. Caching
-- **Redis Leaderboard Cache** (60s TTL)
-- **Client-side Polling** (30s intervals)
-- **Static Asset Optimization** via Next.js
+### 2. Caching Strategy
+```mermaid
+flowchart TD
+    A[Request] --> B{Cache Type?}
+    B -->|Session| C[Memory Cache Check]
+    B -->|Leaderboard| D[Redis Cache Check]
+    C --> E{Memory Hit?}
+    D --> F{Redis Hit?}
+    E -->|Yes| G[Instant Response]
+    E -->|No| H[Check Redis]
+    F -->|Yes| I[Return Cached Data]
+    F -->|No| J[Query Database]
+    H --> K{Redis Hit?}
+    K -->|Yes| L[Update Memory Cache]
+    K -->|No| M[Query Database]
+    J --> N[Cache Result]
+    L --> G
+    M --> O[Update All Caches]
+    N --> P[Return Data]
+    O --> P
+```
+
+- **Memory Cache**: Sub-millisecond response for critical operations
+- **Redis Cache**: Distributed caching for production scalability
+- **Leaderboard Cache**: 60s TTL with 30s client polling
+- **Session Cache**: 5min TTL with instant blacklist capability
 
 ### 3. Client Performance
-- **Zustand** for efficient state updates
+- **Zustand** for efficient state updates with selectors
 - **Framer Motion** for smooth animations
 - **Tailwind CSS 4** for optimized styles
+- **React Query** for server state management
+- **Debounced Search** to prevent excessive API calls
 
 ## Deployment Architecture
 
@@ -404,9 +531,26 @@ npx prisma studio    # Database browser
 ```
 
 ### 2. Testing Strategy
-- **Unit Tests:** Vitest for game logic & AI algorithms
-- **Integration Tests:** API endpoint testing
-- **E2E Tests:** Playwright for full user flows (planned)
+- **Unit Tests**: Vitest for game logic & AI algorithms (23 tests passing)
+- **Integration Tests**: API endpoint testing with authentication
+- **Security Tests**: Rate limiting, input validation, RBAC testing
+- **Performance Tests**: Cache performance, database query optimization
+- **E2E Tests**: Playwright for full user flows (planned)
+
+### Test Coverage
+```bash
+# Game Logic Tests (17 tests)
+- Win detection for all combinations
+- Draw detection
+- Board validation
+- Move validation
+
+# AI Tests (6 tests)
+- Minimax algorithm correctness
+- Easy mode randomness
+- Unbeatable hard mode
+- Performance benchmarks
+```
 
 ### 3. Code Quality
 - **TypeScript** for type safety
@@ -419,14 +563,20 @@ npx prisma studio    # Database browser
 1. **E2E Testing Suite** with Playwright
 2. **Real-time Multiplayer** via WebSockets
 3. **Tournament Mode** with bracket system
-4. **Advanced Analytics** dashboard
+4. **Advanced Analytics** dashboard with heatmaps
 5. **Mobile App** via React Native
+6. **AI Difficulty Adaptation** based on player performance
+7. **Game Recording** with shareable replays
+8. **Achievement System** with badges and rewards
 
 ### Scalability Considerations
 1. **Database Sharding** for high user volume
 2. **CDN Integration** for global performance
 3. **Microservices** for specific game features
 4. **WebSocket Scaling** for real-time features
+5. **Redis Cluster** for distributed caching
+6. **Load Balancing** for API endpoints
+7. **Monitoring & Alerting** for production health
 
 ---
 
