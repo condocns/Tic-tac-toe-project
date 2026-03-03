@@ -191,10 +191,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     async session({ session, token }) {
       if (session.user && token.sub) {
-        // const isBlacklisted = await isSessionBlacklistedSafe(token.sub, 75, token.email || undefined);
-        // if (isBlacklisted) {
-        //   throw new Error("Session revoked");
-        // }
+        const isBlacklisted = await isSessionBlacklistedSafe(token.sub, 75, token.email || undefined);
+        if (isBlacklisted) {
+          throw new Error("Session revoked");
+        }
 
         session.user.id = token.sub;
         session.user.role = (token.role as UserRole) ?? UserRole.USER;
